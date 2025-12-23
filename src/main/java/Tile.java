@@ -72,4 +72,13 @@ public class Tile {
     public boolean shouldBulletReflect() {
         return type.isBulletReflect();
     }
+
+    // 在 Tile 类中添加这个 setter
+    public void setDestroyed(boolean destroyed) {
+        this.destroyed = destroyed;
+        if (destroyed && this.type == TileType.BRICK) {
+            // 如果砖墙被毁，将其类型改为 EMPTY，这样下一帧坦克和子弹就能通过了
+            this.type = TileType.EMPTY;
+        }
+    }
 }

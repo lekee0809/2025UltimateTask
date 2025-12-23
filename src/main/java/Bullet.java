@@ -20,14 +20,66 @@ public class Bullet extends Entity { // 建议类名大写
         this.speedy = speedy;
     }
 
-    @Override // 现在签名一致了，报错会消失
+    @Override
     public void update(Tile[][] map) {
         if (!alive) return;
 
-        // 执行你之前写的逻辑
-        handleXMovement(map);
-        handleYMovement(map);
-        handleBoundaryBounce();
+        // 1. 记录移动前的旧位置（用于反弹时判断撞击面）
+        double oldX = x;
+        double oldY = y;
+
+        // 2. 根据速度更新位置 (速度已经在发射时根据 GameConfig.BULLET_SPEED 设置)
+        x += speedx;
+        y += speedy;
+
+        // 3. 计算当前的网格索引 (使用你定义的 GRID_SIZE: 40.0)
+        int col = (int) (x / GameConfig.GRID_SIZE);
+        int row = (int) (y / GameConfig.GRID_SIZE);
+
+        // 4. 地图边界检查
+        if (row < 0 || row >= GameConfig.MAP_ROWS || col < 0 || col >= GameConfig.MAP_COLS) {
+            this.alive = false;
+            return;
+        }
+
+        // 5. 获取当前格子并处理逻辑
+        Tile currentTile = map[row][col];
+
+        if (!currentTile.getType().isBulletPassable()) {
+            // --- 逻辑 A：遇到石墙 (STONE) - 处理反弹 ---
+            if (currentTile.getType().isBulletReflect()) {
+                handleBounce(oldX, oldY, col, row);
+                bounceCount++;
+
+                // 达到最大反弹次数后销毁 (使用 GameConfig.MAX_BULLET_BOUNCES: 3)
+                if (bounceCount > GameConfig.MAX_BULLET_BOUNCES) {
+                    this.alive = false;
+                }
+            }
+            // --- 逻辑 B：遇到砖墙 (BRICK) - 销毁子弹并破坏墙体 ---
+            else {
+                this.alive = false;
+                currentTile.setDestroyed(true); // 砖墙消失逻辑
+            }
+        }
+    }
+
+    private void handleBounce(double oldX, double oldY, int targetCol, int targetRow) {
+        // 计算旧坐标所在的网格
+        int oldCol = (int) (oldX / GameConfig.GRID_SIZE);
+        int oldRow = (int) (oldY / GameConfig.GRID_SIZE);
+
+        // 左右碰撞：如果旧坐标的列与目标列不同
+        if (oldCol != targetCol) {
+            speedx = -speedx; // X轴速度反转
+            x = oldX;         // 坐标回正，防止子弹“嵌”进墙里
+        }
+
+        // 上下碰撞：如果旧坐标的行与目标行不同
+        if (oldRow != targetRow) {
+            speedy = -speedy; // Y轴速度反转
+            y = oldY;         // 坐标回正
+        }
     }
 
     private void handleXMovement(Tile[][] map) {

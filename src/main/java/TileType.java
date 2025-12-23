@@ -1,3 +1,4 @@
+import static javafx.application.Application.launch;
 
 /**
  * 地图格子类型枚举
@@ -110,4 +111,6 @@ public enum TileType {
         }
         return EMPTY;
     }
-}
+
+    // 每一个 Java 程序都需要一个入口
+} // 类的结束大括号
