@@ -1,3 +1,4 @@
+
 /**
  * 坦克大战全局配置文件
  * 由指挥官 Lekee 统一定义，确保全队逻辑对齐
@@ -39,4 +40,5 @@ public class GameConfig {
     public static final int TILE_BRICK = 1; // 普通砖墙
     public static final int TILE_STONE = 2; // 硬石头（子弹在此反弹）
     public static final int TILE_WATER = 3; // 水（坦克不可过，子弹可过）
+    public static final int TILE_GRASS = 4; //草地（坦克可过，隐身，子弹可过）
 }

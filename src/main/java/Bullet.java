@@ -20,12 +20,45 @@ public class Bullet extends Entity { // 建议类名大写
         this.speedy = speedy;
     }
 
-    @Override
-    public void update() {
-        x += speedx;
-        y += speedy;
+    public void update(Tile[][] map) {
+        if (!alive) return;
+
+        // 分轴检测：先处理 X
+        handleXMovement(map);
+        // 后处理 Y
+        handleYMovement(map);
 
         handleBoundaryBounce();
+    }
+
+    private void handleXMovement(Tile[][] map) {
+        double nextX = x + speedx;
+        Tile tile = getTileAt(nextX, y, map);
+
+        if (tile != null) {
+            if (tile.shouldBulletReflect()) {
+                speedx = -speedx; // 反弹
+                onBounce();
+            } else if (!tile.canBulletPass()) {
+                // 如果不能穿过且不反弹，那就是砖块
+                tile.destroy();
+                this.alive = false; // 子弹碎了
+            } else {
+                x = nextX; // 水或草丛，穿过
+            }
+        }
+    }
+
+// Y 轴逻辑同上，只需换成 nextY 和 speedy...
+
+    private Tile getTileAt(double tx, double ty, Tile[][] map) {
+        int col = (int) ((tx + GameConfig.BULLET_RADIUS) / GameConfig.GRID_SIZE);
+        int row = (int) ((ty + GameConfig.BULLET_RADIUS) / GameConfig.GRID_SIZE);
+
+        if (row >= 0 && row < GameConfig.MAP_ROWS && col >= 0 && col < GameConfig.MAP_COLS) {
+            return map[row][col];
+        }
+        return null;
     }
 
     private void handleBoundaryBounce() {
