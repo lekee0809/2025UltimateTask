@@ -20,7 +20,7 @@ public abstract class Entity {
     }
 
     // 每一帧逻辑更新（位移、AI等）
-    public abstract void update();
+    public abstract void update(Tile[][] map);
 
     // 每一帧画面渲染
     public abstract void draw(GraphicsContext gc);

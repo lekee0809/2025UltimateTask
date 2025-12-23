@@ -20,40 +20,69 @@ public class Bullet extends Entity { // 建议类名大写
         this.speedy = speedy;
     }
 
+    @Override // 现在签名一致了，报错会消失
     public void update(Tile[][] map) {
         if (!alive) return;
 
-        // 分轴检测：先处理 X
+        // 执行你之前写的逻辑
         handleXMovement(map);
-        // 后处理 Y
         handleYMovement(map);
-
         handleBoundaryBounce();
     }
 
     private void handleXMovement(Tile[][] map) {
         double nextX = x + speedx;
-        Tile tile = getTileAt(nextX, y, map);
+        // 使用目标位置的中心点进行探测
+        Tile tile = getTileAt(nextX + GameConfig.BULLET_RADIUS, y + GameConfig.BULLET_RADIUS, map);
 
-        if (tile != null) {
+        if (tile != null && !tile.isDestroyed()) {
             if (tile.shouldBulletReflect()) {
-                speedx = -speedx; // 反弹
+                speedx = -speedx; // 撞到石墙：X轴反弹
                 onBounce();
             } else if (!tile.canBulletPass()) {
-                // 如果不能穿过且不反弹，那就是砖块
+                // 撞到砖墙：子弹碎，砖块毁
                 tile.destroy();
-                this.alive = false; // 子弹碎了
+                this.alive = false;
             } else {
-                x = nextX; // 水或草丛，穿过
+                x = nextX; // 空地、水、草丛：正常通过
             }
+        } else {
+            x = nextX; // 超出地图边界或无瓦片时（理论上由边界逻辑处理）
         }
     }
 
-// Y 轴逻辑同上，只需换成 nextY 和 speedy...
+    private void handleYMovement(Tile[][] map) {
+        if (!alive) return; // 如果 X 轴撞砖块碎了，就不处理 Y 了
 
-    private Tile getTileAt(double tx, double ty, Tile[][] map) {
-        int col = (int) ((tx + GameConfig.BULLET_RADIUS) / GameConfig.GRID_SIZE);
-        int row = (int) ((ty + GameConfig.BULLET_RADIUS) / GameConfig.GRID_SIZE);
+        double nextY = y + speedy;
+        Tile tile = getTileAt(x + GameConfig.BULLET_RADIUS, nextY + GameConfig.BULLET_RADIUS, map);
+
+        if (tile != null && !tile.isDestroyed()) {
+            if (tile.shouldBulletReflect()) {
+                speedy = -speedy; // 撞到石墙：Y轴反弹
+                onBounce();
+            } else if (!tile.canBulletPass()) {
+                tile.destroy();
+                this.alive = false;
+            } else {
+                y = nextY;
+            }
+        } else {
+            y = nextY;
+        }
+    }
+
+    private void onBounce() {
+        bounceCount++;
+        if (bounceCount > GameConfig.MAX_BULLET_BOUNCES) {
+            alive = false;
+        }
+    }
+
+    // 辅助方法：通过物理坐标直接获取 Tile 对象
+    private Tile getTileAt(double px, double py, Tile[][] map) {
+        int col = (int) (px / GameConfig.GRID_SIZE);
+        int row = (int) (py / GameConfig.GRID_SIZE);
 
         if (row >= 0 && row < GameConfig.MAP_ROWS && col >= 0 && col < GameConfig.MAP_COLS) {
             return map[row][col];
