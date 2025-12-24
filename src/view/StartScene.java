@@ -45,10 +45,10 @@ public class StartScene {
         Button startBtn = new Button("开始游戏");
         startBtn.setStyle(buttonStyle);
         startBtn.setOnAction(e -> {
-            // 切换到游戏战斗场景（后续和 game/Main.java 协作）
-            GameScene gameScene = new GameScene(primaryStage);
-            primaryStage.setScene(gameScene.getScene());
-        });
+            // 切换到模式选择界面（替代直接跳游戏场景）
+        ModeSelectScene modeSelectScene = new ModeSelectScene(primaryStage);
+        primaryStage.setScene(modeSelectScene.getScene());
+    });
 
         // 5. 排行榜按钮
         Button rankBtn = new Button("排行榜");
