@@ -5,8 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-
-public class ResourceManager {
+public abstract class ResourceManager {
 
     // 单例模式（确保全局只有一个资源加载器）
     private static ResourceManager instance;
@@ -61,5 +60,6 @@ public class ResourceManager {
             return new Image(new ByteArrayInputStream(new byte[0]));
         }
     }
+
 
 }
