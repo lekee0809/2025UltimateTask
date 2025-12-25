@@ -48,4 +48,3 @@ public class GameConfig {
     public static final int PLAYER_FIRE_COOLDOWN = 500; // 0.5秒一发
     public static final int PLAYER_BULLET_DAMAGE = 20;
 }
-}
