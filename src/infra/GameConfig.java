@@ -43,5 +43,9 @@ public class GameConfig {
     public static final int TILE_WATER = 3; // 水（坦克不可过，子弹可过）
     public static final int TILE_GRASS = 4; //草地（坦克可过，隐身，子弹可过）
 
-
+    // 在 GameConfig 类中添加：
+    public static final int PLAYER_HEALTH = 100;
+    public static final int PLAYER_FIRE_COOLDOWN = 500; // 0.5秒一发
+    public static final int PLAYER_BULLET_DAMAGE = 20;
+}
 }

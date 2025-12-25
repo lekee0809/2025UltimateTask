@@ -3,7 +3,6 @@ package model;
 import infra.*;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.canvas.GraphicsContext;
-
 import javafx.scene.paint.Color;
 
 public class Bullet extends Entity { // 建议类名大写
