@@ -8,14 +8,11 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 
 /**
- * 完全独立的坦克类，不继承Entity
+ * 完全独立的坦克类，继承Entity
  * 实现平滑旋转和完整坦克功能
  */
-public abstract class Tank {
-    // ========== 基础属性 ==========
-    public double x, y;                 // 位置
-    public double width, height;        // 尺寸
-    public boolean alive = true;        // 存活状态
+public abstract class Tank extends Entity {
+
 
     //  定义可观察的X/Y属性（核心）
     private final DoubleProperty xProperty = new SimpleDoubleProperty(0); // 初始值0
@@ -67,10 +64,7 @@ public abstract class Tank {
                 int health, int fireCooldown,
                 int bulletDamage, double bulletSpeed,
                 int scoreValue) {
-        this.x = x;
-        this.y = y;
-        this.width = GameConfig.TANK_SIZE;
-        this.height = GameConfig.TANK_SIZE;
+        super(x,y,GameConfig.TANK_SIZE,GameConfig.TANK_SIZE);
         this.type = type;
         this.speed = speed;
         this.rotationSpeed = rotationSpeed;
@@ -130,26 +124,25 @@ public abstract class Tank {
 
     // ========== 核心更新逻辑 ==========
 
-    /**
-     * 更新坦克状态（每帧调用）
-     */
-    public void update() {
-        // 1. 处理旋转
-        handleRotation();
 
-        // 2. 平滑角度插值
-        smoothRotation();
+        public void update(Tile[][] map) { // <--- 这里加了参数
+            // 1. 处理旋转
+            handleRotation();
+            smoothRotation();
 
-        // 3. 处理移动
-        handleMovement();
+            // 2. 处理移动意图 (计算出 vx, vy)
+            handleMovement();
 
-        // 4. 更新位置
-        x += vx;
-        y += vy;
+            // 3. 【新增】地图碰撞修正 (如果有墙，就把 vx/vy 设为 0)
+            handleMapCollision(map);
 
-        // 5. 边界检查
-        checkBounds();
-    }
+            // 4. 更新位置
+            x += vx;
+            y += vy;
+
+            // 5. 边界检查
+            checkBounds();
+        }
 
     /**
      * 处理旋转输入
@@ -163,6 +156,70 @@ public abstract class Tank {
         }
         logicRotation = normalizeAngle(logicRotation);
     }
+
+
+    // ========== 地图碰撞核心逻辑 ==========
+
+    /**
+     * 处理与地图格子的碰撞（阻止穿墙）
+     * 原理：预判下一步位置，如果撞墙则取消位移
+     */
+    protected void handleMapCollision(Tile[][] map) {
+        if (vx == 0 && vy == 0) return;
+
+        double nextX = x + vx;
+        double nextY = y + vy;
+
+        // 1. 检查 X 轴移动是否撞墙
+        if (isCollidingWithMap(nextX, y, map)) {
+            vx = 0; // X轴撞墙，速度归零
+        }
+
+        // 2. 检查 Y 轴移动是否撞墙
+        if (isCollidingWithMap(x, nextY, map)) {
+            vy = 0; // Y轴撞墙，速度归零
+        }
+
+        // 注意：这种简单的分轴归零法（Slide）可以让坦克贴墙滑动，手感更好
+    }
+
+    /**
+     * 判断坦克矩形是否与任何阻挡块重叠
+     * 策略：检查坦克四个角所在的 Tile
+     */
+    private boolean isCollidingWithMap(double targetX, double targetY, Tile[][] map) {
+        // 稍微缩小一点碰撞箱，防止卡死在缝隙里 (容错量 2px)
+        double margin = 2.0;
+        double left = targetX + margin;
+        double right = targetX + width - margin;
+        double top = targetY + margin;
+        double bottom = targetY + height - margin;
+
+        // 检查四个角
+        return isSolidTile(left, top, map) ||
+                isSolidTile(right, top, map) ||
+                isSolidTile(left, bottom, map) ||
+                isSolidTile(right, bottom, map);
+    }
+
+    /**
+     * 检查某个像素点所在的 Tile 是否是障碍物
+     */
+    private boolean isSolidTile(double px, double py, Tile[][] map) {
+        int col = (int) (px / GameConfig.GRID_SIZE);
+        int row = (int) (py / GameConfig.GRID_SIZE);
+
+        // 1. 越界检查（把地图外视为墙）
+        if (row < 0 || row >= GameConfig.MAP_ROWS || col < 0 || col >= GameConfig.MAP_COLS) {
+            return true;
+        }
+
+        Tile tile = map[row][col];
+        // 2. 检查 TileType 属性
+        // 如果该地形坦克不可通过（比如 水、墙、石），则视为障碍
+        return !tile.getType().isTankPassable();
+    }
+
 
     /**
      * 处理移动输入
@@ -224,9 +281,9 @@ public abstract class Tank {
         }
 
         // 调试信息
-        if (GameConfig.DEBUG_MODE) {
+        /*if (GameConfig.DEBUG_MODE) {
             drawDebugInfo(gc);
-        }
+        }*/
     }
 
     /**
@@ -298,19 +355,6 @@ public abstract class Tank {
         gc.fillText(String.format("显示角度: %.1f°", displayRotation), x, y - 20);
         gc.fillText(String.format("速度: (%.1f, %.1f)", vx, vy), x, y - 35);
     }
-
-    // ========== 碰撞检测 ==========
-
-    /**
-     * 检查与另一个实体的碰撞
-     */
-    public boolean collidesWith(Tank other) {
-        return x < other.x + other.width &&
-                x + width > other.x &&
-                y < other.y + other.height &&
-                y + height > other.y;
-    }
-
     /**
      * 检查与点的碰撞
      */
@@ -339,12 +383,29 @@ public abstract class Tank {
      * 发射子弹
      */
     private Bullet fire() {
-        // 使用平滑角度计算炮口位置
         double radians = Math.toRadians(displayRotation);
-        double muzzleX = getCenterX() + Math.sin(radians) * (width / 2);
-        double muzzleY = getCenterY() + -Math.cos(radians) * (height / 2);
 
-        return new Bullet(muzzleX, muzzleY, displayRotation, this, bulletSpeed, bulletDamage);
+        // 计算炮口位置
+        double muzzleX = getCenterX() + Math.sin(radians) * (width / 2 + 5); // +5 让子弹别贴着脸生成
+        double muzzleY = getCenterY() + -Math.cos(radians) * (height / 2 + 5);
+
+        // 计算子弹的分速度
+        double bulletVx = Math.sin(radians) * bulletSpeed;
+        double bulletVy = -Math.cos(radians) * bulletSpeed;
+
+        boolean isEnemyTank = (this.type != TankType.PLAYER_GREEN);
+
+        return new Bullet(
+                isEnemyTank,
+                bulletDamage,
+                (int)displayRotation,
+                bulletVx,
+                bulletVy,
+                muzzleX,
+                muzzleY,
+                GameConfig.BULLET_RADIUS * 2, // 使用配置里的尺寸
+                GameConfig.BULLET_RADIUS * 2
+        );
     }
 
     /**
