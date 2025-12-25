@@ -175,4 +175,8 @@ public class Bullet extends Entity {
     public double getY() {
         return y;
     }
+
+    public int getDamage() {
+        return damage;
+    }
 }
