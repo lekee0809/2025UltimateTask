@@ -20,7 +20,7 @@ public class FastTank extends Tank {
                 GameConfig.FAST_SCORE_VALUE);
 
         // 快速坦克旋转灵敏
-        setRotationSmoothness(0.3);
+        setSmoothFactor(0.3);
     }
 
     @Override

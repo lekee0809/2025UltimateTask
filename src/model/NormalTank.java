@@ -20,7 +20,7 @@ public class NormalTank extends Tank {
                 GameConfig.NORMAL_SCORE_VALUE);
 
         // 普通坦克中等灵敏度
-        setRotationSmoothness(0.2);
+        setSmoothFactor(0.2);
     }
 
     @Override
