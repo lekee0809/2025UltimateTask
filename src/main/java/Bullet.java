@@ -1,20 +1,18 @@
+
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 
-/**
- * 子弹类 - 由 Lekee 指挥官统一定制
- * 特性：支持分轴碰撞检测、3次物理反弹、砖墙破坏
- */
 public class Bullet extends Entity {
-    private double speedx;    // X轴分速度
-    private double speedy;    // Y轴分速度
-    private double direction; // 子弹朝向角度（double 精度）
-    private int damage;       // 伤害值
-    public boolean isEnemy;   // 敌我标志
-    private int bounceCount = 0; // 反弹计数器
+    private double speedx;
+    private double speedy;
 
-    public Bullet(boolean isEnemy, int damage, double direction, double speedx, double speedy,
-                  double x, double y, double width, double height) {
+    private int direction;
+    private int damage;
+    public Boolean isEnemy;
+    private int bounceCount = 0; // 记录反弹次数
+
+    // 构造函数
+    public Bullet(Boolean isEnemy, int damage, int direction, double speedx, double speedy, double x, double y, double width, double height) {
         super(x, y, width, height);
         this.isEnemy = isEnemy;
         this.damage = damage;
@@ -27,98 +25,91 @@ public class Bullet extends Entity {
     public void update(Tile[][] map) {
         if (!alive) return;
 
-        // 记录旧位置用于回退处理
-        double oldX = x;
-        double oldY = y;
-
-        // --- 分轴检测逻辑 ---
-        // 1. 处理 X 轴移动
+        // ✅ 核心修改：采用分离轴逻辑
+        // 1. 先尝试水平移动
         handleXMovement(map);
 
-        // 2. 处理 Y 轴移动
-        handleYMovement(map);
+        // 2. 如果子弹还活着（没撞砖块），再尝试垂直移动
+        if (alive) {
+            handleYMovement(map);
+        }
 
-        // 3. 处理屏幕边界反弹
+        // 3. 处理屏幕边缘反弹 (可选，视你的需求而定，也可以直接销毁)
         handleBoundaryBounce();
     }
 
-    /**
-     * X 轴物理逻辑：移动 + 碰撞检测
-     */
+    // --- X 轴移动逻辑 ---
     private void handleXMovement(Tile[][] map) {
-        x += speedx;
-        // 探测子弹中心点所在的格子
-        Tile tile = getTileAt(x + GameConfig.BULLET_RADIUS, y + GameConfig.BULLET_RADIUS, map);
+        double nextX = x + speedx;
 
-        if (tile != null && !tile.getType().isBulletPassable()) {
-            if (tile.getType().isBulletReflect()) {
-                // 撞击石墙：反弹
-                speedx = -speedx;
-                x = (speedx > 0) ? x + 2 : x - 2; // 微量位移防止卡墙
-                onBounce();
-            } else {
-                // 撞击砖墙：摧毁
-                tile.setDestroyed(true);
-                this.alive = false;
+        // 我们检测子弹的【中心点】，这样判定更精准
+        double justifyX = nextX + GameConfig.BULLET_RADIUS;
+        double justifyY = y + GameConfig.BULLET_RADIUS;
+
+        Tile tile = getTileAt(justifyX, justifyY, map);
+
+        if (tile != null) {
+            TileType type = tile.getType();
+
+            // 1. 遇到空地/水/草 -> 通过
+            if (type == TileType.EMPTY || type == TileType.WATER || type == TileType.GRASS) {
+                x = nextX;
             }
+            // 2. 遇到石头 -> 反弹
+            else if (type == TileType.STONE) {
+                speedx = -speedx; // 速度反转
+                onBounce();       // 增加计数
+                // 注意：这里不更新 x，相当于把子弹“挡”在了原地一帧，防止嵌入
+            }
+            // 3. 遇到砖块 -> 销毁
+            else if (type == TileType.BRICK) {
+                this.alive = false;          // 子弹死
+                tile.setDestroyed(true);// 砖块碎 (这里假设你没有Tile的destroy方法，直接改Type)
+            }
+        } else {
+            // 地图外，允许移动 (由边界检查处理)
+            x = nextX;
         }
     }
 
-    /**
-     * Y 轴物理逻辑：移动 + 碰撞检测
-     */
+    // --- Y 轴移动逻辑 ---
     private void handleYMovement(Tile[][] map) {
-        if (!alive) return;
-        y += speedy;
-        Tile tile = getTileAt(x + GameConfig.BULLET_RADIUS, y + GameConfig.BULLET_RADIUS, map);
+        double nextY = y + speedy;
 
-        if (tile != null && !tile.getType().isBulletPassable()) {
-            if (tile.getType().isBulletReflect()) {
-                // 撞击石墙：反弹
-                speedy = -speedy;
-                y = (speedy > 0) ? y + 2 : y - 2;
-                onBounce();
-            } else {
-                // 撞击砖墙：摧毁
-                tile.setDestroyed(true);
-                this.alive = false;
+        // 检测中心点
+        double justifyX = x + GameConfig.BULLET_RADIUS;
+        double justifyY = nextY + GameConfig.BULLET_RADIUS;
+
+        Tile tile = getTileAt(justifyX, justifyY, map);
+
+        if (tile != null) {
+            TileType type = tile.getType();
+
+            if (type == TileType.EMPTY || type == TileType.WATER || type == TileType.GRASS) {
+                y = nextY;
             }
+            else if (type == TileType.STONE) {
+                speedy = -speedy; // Y轴反弹
+                onBounce();
+            }
+            else if (type == TileType.BRICK) {
+                this.alive = false;
+                tile.setDestroyed(true);
+            }
+        } else {
+            y = nextY;
         }
     }
 
-    /**
-     * 统一处理反弹逻辑（计数 + 视觉角度同步）
-     */
+    // 反弹计数处理
     private void onBounce() {
         bounceCount++;
-        // 实时同步子弹的视觉旋转角度
-        this.direction = Math.toDegrees(Math.atan2(speedy, speedx)) + 90;
-
         if (bounceCount > GameConfig.MAX_BULLET_BOUNCES) {
-            this.alive = false;
+            alive = false;
         }
     }
 
-    /**
-     * 屏幕边界检测
-     */
-    private void handleBoundaryBounce() {
-        boolean bounced = false;
-        if (x <= 0 || x >= GameConfig.SCREEN_WIDTH - width) {
-            speedx = -speedx;
-            bounced = true;
-        }
-        if (y <= 0 || y >= GameConfig.SCREEN_HEIGHT - height) {
-            speedy = -speedy;
-            bounced = true;
-        }
-
-        if (bounced) onBounce();
-    }
-
-    /**
-     * 工具方法：坐标转格点
-     */
+    // 获取特定坐标下的 Tile
     private Tile getTileAt(double px, double py, Tile[][] map) {
         int col = (int) (px / GameConfig.GRID_SIZE);
         int row = (int) (py / GameConfig.GRID_SIZE);
@@ -126,33 +117,35 @@ public class Bullet extends Entity {
         if (row >= 0 && row < GameConfig.MAP_ROWS && col >= 0 && col < GameConfig.MAP_COLS) {
             return map[row][col];
         }
-        return null;
+        return null; // 超出地图范围
+    }
+
+    // 屏幕边缘反弹
+    private void handleBoundaryBounce() {
+        boolean bounced = false;
+
+        // 左右边界
+        if (x <= 0 || x >= GameConfig.SCREEN_WIDTH - width) {
+            speedx = -speedx;
+            x += speedx; // 把它推回来一点，防止粘在墙上
+            bounced = true;
+        }
+        // 上下边界
+        if (y <= 0 || y >= GameConfig.SCREEN_HEIGHT - height) {
+            speedy = -speedy;
+            y += speedy; // 把它推回来一点
+            bounced = true;
+        }
+
+        if (bounced) {
+            onBounce();
+        }
     }
 
     @Override
     public void draw(GraphicsContext gc) {
-        if (!alive) return;
-
-        gc.save();
-        // 1. 同样平移到中心
-        gc.translate(x + width / 2, y + height / 2);
-        // 2. 旋转到子弹的飞行角度
-        gc.rotate(direction);
-
-        // 3. 绘制“曳光效果” (不需要贴图也能有高级感)
-        // 我们不画圆，画一个长条形的矩形，看起来更有破空感
-        double bulletLength = width * 1.5; // 让子弹稍长一点
-        double bulletWidth = width;
-
-        // 核心：亮黄色/红色
-        gc.setFill(isEnemy ? Color.RED : Color.GOLD);
-        gc.fillRoundRect(-bulletWidth / 2, -bulletLength / 2, bulletWidth, bulletLength, 5, 5);
-
-        // 增加一个外发光光晕 (模拟 CS 里的曳光弹)
-        gc.setGlobalAlpha(0.4);
-        gc.setFill(isEnemy ? Color.ORANGERED : Color.YELLOW);
-        gc.fillOval(-bulletWidth, -bulletLength / 2, bulletWidth * 2, bulletLength);
-
-        gc.restore();
+        gc.setFill(isEnemy ? Color.RED : Color.YELLOW);
+        // 使用 Entity 的 width/height 绘制
+        gc.fillOval(x, y, width, height);
     }
 }

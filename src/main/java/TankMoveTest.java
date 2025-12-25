@@ -24,7 +24,7 @@ public class TankMoveTest extends Application {
     @Override
     public void start(Stage stage) {
         initMap();
-        player = new PlayerTank(100, 100);
+        player = new PlayerTank(40, 40);
 
         Canvas canvas = new Canvas(GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -73,55 +73,99 @@ public class TankMoveTest extends Application {
             case S: player.setMovingBackward(isPressed); break;
             case A: player.setRotatingLeft(isPressed); break;
             case D: player.setRotatingRight(isPressed); break;
-
-            // ✅ 4. 处理开火 (按下 J 键)
             case J:
                 if (isPressed) {
-                    // 调用 PlayerTank 的射击方法 (内部会自动处理冷却时间)
                     Bullet newBullet = player.tryFire();
-                    if (newBullet != null) {
-                        bullets.add(newBullet); // 将新子弹加入战场
-                    }
+                    if (newBullet != null) bullets.add(newBullet);
+                }
+                break;
+
+            // ✅ 新增：按 R 键重新生成地图 (仅在按下瞬间触发)
+            case R:
+                if (isPressed) {
+                    initMap(); // 重新生成地图
+                    // 重置玩家位置到出生点
+                    player = new PlayerTank(40, 40);
+                    // 清空场上残留子弹
+                    bullets.clear();
+                    System.out.println("Map Regenerated! (Map Pool Updated)");
                 }
                 break;
         }
     }
 
+// 在 TankMoveTest 类中替换这两个方法
+
     private void initMap() {
+        // 使用纯走廊生成器
+        CorridorOnlyGenerator generator = new CorridorOnlyGenerator();
+        int[][] levelData = generator.generate();
+
+        // 下面解析代码不变...
+        map = new Tile[GameConfig.MAP_ROWS][GameConfig.MAP_COLS];
+        // 后面解析 Tile 的代码不变...
         map = new Tile[GameConfig.MAP_ROWS][GameConfig.MAP_COLS];
         for (int r = 0; r < GameConfig.MAP_ROWS; r++) {
             for (int c = 0; c < GameConfig.MAP_COLS; c++) {
-                map[r][c] = new Tile(r, c, TileType.EMPTY);
+                int typeCode = 0;
+                if (r < levelData.length && c < levelData[r].length) {
+                    typeCode = levelData[r][c];
+                }
 
-                // 障碍物配置
-                if (c == 15 && r > 5 && r < 18) map[r][c] = new Tile(r, c, TileType.BRICK);
-                if (Math.random() < 0.05) map[r][c] = new Tile(r, c, TileType.STONE);
-                if (r == 10 && c < 5) map[r][c] = new Tile(r, c, TileType.BRICK);
+                TileType type;
+                switch (typeCode) {
+                    case GameConfig.TILE_BRICK: type = TileType.BRICK; break;
+                    case GameConfig.TILE_STONE: type = TileType.STONE; break;
+                    case GameConfig.TILE_WATER: type = TileType.WATER; break;
+                    case GameConfig.TILE_GRASS: type = TileType.GRASS; break;
+                    default: type = TileType.EMPTY; break;
+                }
+                map[r][c] = new Tile(r, c, type);
             }
         }
     }
-
     private void drawMap(GraphicsContext gc) {
         for (int r = 0; r < GameConfig.MAP_ROWS; r++) {
             for (int c = 0; c < GameConfig.MAP_COLS; c++) {
                 Tile t = map[r][c];
+                if (t.getType() == TileType.EMPTY) continue; // 空地不画
+
                 double x = c * GameConfig.GRID_SIZE;
                 double y = r * GameConfig.GRID_SIZE;
 
-                if (t.getType() == TileType.BRICK) {
-                    gc.setFill(Color.BROWN);
-                    gc.fillRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
-                    gc.setStroke(Color.BLACK);
-                    gc.strokeRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
-                } else if (t.getType() == TileType.STONE) {
-                    gc.setFill(Color.GRAY);
-                    gc.fillRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
-                    gc.setStroke(Color.WHITE);
-                    gc.strokeRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
+                switch (t.getType()) {
+                    case BRICK:
+                        gc.setFill(Color.web("#b15e32")); // 砖红色
+                        gc.fillRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
+                        // 画点纹理细节
+                        gc.setStroke(Color.BLACK);
+                        gc.strokeRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
+                        break;
+
+                    case STONE:
+                        gc.setFill(Color.web("#7f8c8d")); // 铁灰色
+                        gc.fillRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
+                        // 画个 "X" 代表坚硬
+                        gc.setStroke(Color.WHITE);
+                        gc.strokeRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
+                        gc.strokeLine(x, y, x + GameConfig.GRID_SIZE, y + GameConfig.GRID_SIZE);
+                        break;
+
+                    case WATER:
+                        gc.setFill(Color.web("#3498db")); // 蓝色
+                        gc.fillRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
+                        break;
+
+                    case GRASS:
+                        gc.setFill(Color.web("#2ecc71")); // 绿色
+                        // 草地通常需要一点透明度或者画在坦克上面（进阶优化），这里先简单画
+                        gc.fillRect(x, y, GameConfig.GRID_SIZE, GameConfig.GRID_SIZE);
+                        break;
                 }
             }
         }
     }
+
 
     private void drawHUD(GraphicsContext gc) {
         gc.setFill(Color.WHITE);
