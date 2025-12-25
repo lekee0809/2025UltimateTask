@@ -98,7 +98,7 @@ public abstract class Tank extends Entity {
     /**
      * 角度归一化（0-360度）
      */
-    private double normalizeAngle(double angle) {
+    public double normalizeAngle(double angle) {
         angle %= 360;
         if (angle < 0) angle += 360;
         return angle;
@@ -125,24 +125,24 @@ public abstract class Tank extends Entity {
     // ========== 核心更新逻辑 ==========
 
 
-        public void update(Tile[][] map) { // <--- 这里加了参数
-            // 1. 处理旋转
-            handleRotation();
-            smoothRotation();
+    public void update(Tile[][] map) { // <--- 这里加了参数
+        // 1. 处理旋转
+        handleRotation();
+        smoothRotation();
 
-            // 2. 处理移动意图 (计算出 vx, vy)
-            handleMovement();
+        // 2. 处理移动意图 (计算出 vx, vy)
+        handleMovement();
 
-            // 3. 【新增】地图碰撞修正 (如果有墙，就把 vx/vy 设为 0)
-            handleMapCollision(map);
+        // 3. 【新增】地图碰撞修正 (如果有墙，就把 vx/vy 设为 0)
+        handleMapCollision(map);
 
-            // 4. 更新位置
-            x += vx;
-            y += vy;
+        // 4. 更新位置
+        x += vx;
+        y += vy;
 
-            // 5. 边界检查
-            checkBounds();
-        }
+        // 5. 边界检查
+        checkBounds();
+    }
 
     /**
      * 处理旋转输入
@@ -470,6 +470,7 @@ public abstract class Tank extends Entity {
         }
     }
 
+
     public void heal(int amount) {
         health += amount;
         if (health > maxHealth) {
@@ -496,6 +497,78 @@ public abstract class Tank extends Entity {
     public int getBulletDamage() { return bulletDamage; }
     public double getBulletSpeed() { return bulletSpeed; }
     public boolean isPlayer() { return type == TankType.PLAYER_GREEN; }
+// 在 Tank 类中添加以下 getter/setter
+
+    // ========== 角度相关 ==========
+    public double getLogicRotation() {
+        return logicRotation;
+    }
+
+    public void setLogicRotation(double angle) {
+        this.logicRotation = normalizeAngle(angle);
+    }
+
+    public void setDisplayRotation(double angle) {
+        this.displayRotation = normalizeAngle(angle);
+    }
+
+
+    // ========== 生命值相关 ==========
+
+
+    public int getMaxHealth() {
+        return maxHealth;
+    }
+
+    public double getHealthPercentage() {
+        return (double) health / maxHealth;
+    }
+
+    // ========== 控制状态相关 ==========
+    public boolean isMovingForward() {
+        return movingForward;
+    }
+
+    public boolean isMovingBackward() {
+        return movingBackward;
+    }
+
+    public boolean isRotatingLeft() {
+        return rotatingLeft;
+    }
+
+    public boolean isRotatingRight() {
+        return rotatingRight;
+    }
+
+    // ========== 速度相关 ==========
+    public double getSpeed() {
+        return speed;
+    }
+
+    public void setSpeed(double speed) {
+        this.speed = speed;
+    }
+
+    public double getRotationSpeed() {
+        return rotationSpeed;
+    }
+
+    public void setRotationSpeed(double rotationSpeed) {
+        this.rotationSpeed = rotationSpeed;
+    }
+
+
+
+    public void setVx(double vx) {
+        this.vx = vx;
+    }
+
+
+    public void setVy(double vy) {
+        this.vy = vy;
+    }
+
     // 2. 对外暴露属性对象（供绑定用）
     public DoubleProperty xProperty() {
         return xProperty;
