@@ -42,4 +42,6 @@ public class GameConfig {
     public static final int TILE_STONE = 2; // 硬石头（子弹在此反弹）
     public static final int TILE_WATER = 3; // 水（坦克不可过，子弹可过）
     public static final int TILE_GRASS = 4; //草地（坦克可过，隐身，子弹可过）
+
+
 }
