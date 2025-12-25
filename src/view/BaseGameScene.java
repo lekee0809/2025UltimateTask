@@ -76,11 +76,11 @@ public abstract class BaseGameScene {
 
     // ========== 通用工具方法（子类可直接调用） ==========
     protected void drawMap(MapModel mapModel) {
-        spritePainter.drawMap(mapGc, mapModel);
+        //spritePainter.drawMap(mapGc, mapModel);
     }
 
     protected void drawTank(Tank tank) {
-        gameRoot.getChildren().add(spritePainter.createTankView(tank));
+        //gameRoot.getChildren().add(spritePainter.createTankView(tank));
     }
 
     // Getter方法（供外部获取场景）

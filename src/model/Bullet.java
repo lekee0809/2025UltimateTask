@@ -168,4 +168,11 @@ public class Bullet extends Entity {
         gc.setFill(isEnemy ? Color.RED : Color.YELLOW);
         gc.fillOval(x, y, width, height);
     }
+
+    public double getX() {
+        return x;
+    }
+    public double getY() {
+        return y;
+    }
 }
