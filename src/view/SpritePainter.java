@@ -41,7 +41,8 @@ public class SpritePainter {
         }
 
         // 2. 根据坦克颜色加载对应图片（兼容大小写，避免文件名问题）
-        String tankImagePath = "images/tank_" + tank.getColor().toLowerCase() + ".png";
+        String type = tank.getType() == null ? "default" : tank.getType().toString();
+        String tankImagePath = "images/" + type + ".png";
         ImageView tankView = new ImageView(resourceManager.loadImage(tankImagePath));
 
         // 3. 设置坦克尺寸（适配地图格子，从配置类读取常量）
@@ -54,7 +55,7 @@ public class SpritePainter {
         tankView.yProperty().bind(tank.yProperty());
 
         // 5. 初始化旋转（匹配坦克初始角度）
-        rotateTank(tankView, tank.getAngle());
+        rotateTank(tankView, tank.getDisplayRotation());
 
         // 6. 保存当前坦克View（便于后续操作）
         this.currentTankView = tankView;
@@ -96,40 +97,6 @@ public class SpritePainter {
         tankView.getTransforms().add(rotate);
     }
 
-    /**
-     * 创建子弹的 ImageView
-     * @param bullet 子弹实体（包含所属方、位置、角度等数据）
-     * @return 子弹的 ImageView（绑定位置+匹配角度）
-     */
-    public ImageView createBulletView(Bullet bullet) {
-        // 1. 校验子弹实体非空
-        if (bullet == null) {
-            System.err.println("创建子弹View失败：子弹实体不能为空！");
-            return new ImageView(resourceManager.loadImage("images/default_bullet.png"));
-        }
-
-        // 2. 根据子弹所属方加载对应图片
-        String bulletImagePath = bullet.isEnemy()
-                ? "images/EnemyTankBullet.png"
-                : "images/MyTankBullet.png";
-        ImageView bulletView = new ImageView(resourceManager.loadImage(bulletImagePath));
-
-        // 3. 设置子弹尺寸（从配置类读取常量）
-        bulletView.setFitWidth(GameConfig.BULLET_RADIUS);
-        bulletView.setFitHeight(GameConfig.BULLET_SPEED);
-        bulletView.setPreserveRatio(true);
-
-        // 4. 绑定子弹位置（实体数据变化时，UI自动同步）
-        bulletView.xProperty().bind(bullet.xProperty());
-        bulletView.yProperty().bind(bullet.yProperty());
-
-
-        // 6. 保存当前子弹View（便于后续操作）
-        this.currentBulletView = bulletView;
-
-        return bulletView;
-    }
-
 
     /**
      * 绘制游戏地图（核心逻辑：遍历地图数组，绘制不同类型的格子）
@@ -144,7 +111,7 @@ public class SpritePainter {
         }
 
         // 2. 获取地图基础参数（从配置类/模型读取）
-        int gridSize = GameConfig.GRID_SIZE; // 地图格子尺寸
+        double gridSize = GameConfig.GRID_SIZE; // 地图格子尺寸
         int[][] mapData = mapModel.getMapData(); // 地图数据数组（0=空地，1=墙壁，2=草地）
 
         // 3. 遍历地图数组，逐格绘制
