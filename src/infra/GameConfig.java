@@ -47,4 +47,32 @@ public class GameConfig {
     public static final int PLAYER_HEALTH = 100;
     public static final int PLAYER_FIRE_COOLDOWN = 500; // 0.5秒一发
     public static final int PLAYER_BULLET_DAMAGE = 20;
+
+    // === Enemy Stats (数值体系) ===
+
+    // 1. 重型坦克 (HEAVY): 笨重但致命，像个移动堡垒
+    public static final double HEAVY_SPEED_MULTIPLIER = 0.6;
+    public static final double HEAVY_ROTATION_MULTIPLIER = 0.5;
+    public static final int HEAVY_HEALTH = 200;
+    public static final int HEAVY_FIRE_COOLDOWN = 1500; // 射速慢
+    public static final int HEAVY_BULLET_DAMAGE = 50;   // 一炮半血
+    public static final double HEAVY_BULLET_SPEED_MULTIPLIER = 0.8;
+    public static final int HEAVY_SCORE_VALUE = 500;
+
+    // 2. 侦查坦克 (FAST): 脆皮但极快，类似 CS 里的拉枪位
+    public static final double FAST_SPEED_MULTIPLIER = 1.5;
+    public static final double FAST_ROTATION_MULTIPLIER = 1.8;
+    public static final int FAST_HEALTH = 50;
+    public static final int FAST_FIRE_COOLDOWN = 400;  // 泼水射速
+    public static final int FAST_BULLET_DAMAGE = 10;
+    public static final double FAST_BULLET_SPEED_MULTIPLIER = 1.4;
+    public static final int FAST_SCORE_VALUE = 200;
+
+    // 3. 普通坦克 (NORMAL): 中规中矩
+    public static final double NORMAL_SPEED_MULTIPLIER = 1.0;
+    public static final double NORMAL_ROTATION_MULTIPLIER = 1.0;
+    public static final int NORMAL_HEALTH = 100;
+    public static final int NORMAL_FIRE_COOLDOWN = 800;
+    public static final int NORMAL_BULLET_DAMAGE = 20;
+    public static final int NORMAL_SCORE_VALUE = 100;
 }
