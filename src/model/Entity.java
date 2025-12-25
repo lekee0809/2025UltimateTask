@@ -34,4 +34,12 @@ public abstract class Entity {
                 y < other.y + other.height &&
                 y + height > other.y;
     }
+
+   public boolean isAlive() {
+        return alive;
+    }
+
+    public void setAlive(boolean alive) {
+        this.alive = alive;
+    }
 }
