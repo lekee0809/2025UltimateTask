@@ -1,47 +1,121 @@
 package view;
+
+import javafx.animation.AnimationTimer;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import model.MapModel;
-import model.Tank;
-public class StageGameScene extends BaseGameScene{
+import model.*;
+import model.Tank.TankType;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class StageGameScene extends BaseGameScene {
+
+    // 这里虽然写了 = new ArrayList<>(); 但在父类构造期间它还没运行
+    private Tank player;
+    private List<Tank> enemies;
+    private List<Bullet> bullets;
+    private Tile[][] map;
+    private AnimationTimer gameLoop;
 
     public StageGameScene(Stage primaryStage) {
         super(primaryStage);
     }
 
-    /**
-     * 实现闯关模式专属逻辑
-     */
     @Override
     protected void initModeSpecificLogic() {
-        // 1. 加载闯关模式专属地图（第一关）
-        MapModel stageMap = new MapModel("stage_1"); // 闯关地图资源
-        drawMap(stageMap);
+        // 【核心修复】必须在这里手动初始化列表，否则报空指针
+        this.enemies = new ArrayList<>();
+        this.bullets = new ArrayList<>();
 
-        // 2. 初始化玩家坦克（单玩家，蓝色坦克）
-        Tank playerTank = new Tank("blue", 100, 500, 0); // 初始位置+角度
-        drawTank(playerTank);
+        // 1. 加载地图
+        MapModel mapModel = new MapModel(MapModel.LEVEL_1);
+        this.map = mapModel.getTiles();
 
-        // 3. 初始化AI敌人坦克（闯关模式核心）
-        initEnemyTanks();
+        // 2. 创建玩家 (绿色)
+        player = new PlayerTank(50, 50);
 
-        // 4. 绑定单人玩家输入（WASD移动+空格射击）
-        inputHandler.bindSinglePlayerInput();
+        // 3. 创建敌人 (作为靶子，分别放在不同位置)
+        enemies.add(new NormalTank(300, 300));
+        enemies.add(new NormalTank(500, 100));
+        enemies.add(new NormalTank(600, 400));
+
+        startGameLoop();
     }
 
-    /**
-     * 初始化闯关模式的AI敌人坦克
-     */
-    private void initEnemyTanks() {
-        // 示例：生成3个红色敌人坦克（不同位置）
-        Tank enemy1 = new Tank("red", 200, 100, 180);
-        Tank enemy2 = new Tank("red", 400, 100, 180);
-        Tank enemy3 = new Tank("red", 600, 100, 180);
-        drawTank(enemy1);
-        drawTank(enemy2);
-        drawTank(enemy3);
+    private void startGameLoop() {
+        gameLoop = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                update();
+                render();
+            }
+        };
+        gameLoop.start();
+    }
 
-        // 后续可扩展：敌人AI逻辑（自动移动、射击）
+    private void update() {
+        // --- 1. 玩家更新 ---
+        if (player.isAlive()) {
+            player.setMovingForward(inputHandler.isWPressed());
+            player.setMovingBackward(inputHandler.isSPressed());
+            player.setRotatingLeft(inputHandler.isAPressed());
+            player.setRotatingRight(inputHandler.isDPressed());
+
+            if (inputHandler.isJPressed()) {
+                Bullet b = player.tryFire();
+                if (b != null) {
+                    bullets.add(b);
+                }
+            }
+            player.update(map);
+        }
+
+        // --- 2. 敌人更新 ---
+        for (Tank enemy : enemies) {
+            if (enemy.isAlive()) {
+                enemy.update(map);
+            }
+        }
+
+        // --- 3. 子弹更新 ---
+        bullets.removeIf(b -> !b.alive);
+
+        for (Bullet b : bullets) {
+            b.update(map);
+        }
+
+        // --- 4. 清理死掉的敌人 ---
+        enemies.removeIf(enemy -> !enemy.isAlive());
+    }
+
+    private void render() {
+        GraphicsContext gc = mapGc;
+
+        // 清屏
+        gc.setFill(Color.BLACK);
+        gc.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // 绘制地图底层
+        spritePainter.drawMapBackground(gc, map);
+
+        // 绘制敌人
+        for (Tank enemy : enemies) {
+            enemy.draw(gc);
+        }
+
+        // 绘制玩家
+        if (player.isAlive()) {
+            player.draw(gc);
+        }
+
+        // 绘制子弹
+        for (Bullet b : bullets) {
+            b.draw(gc);
+        }
+
+        // 绘制地图顶层
+        spritePainter.drawMapForeground(gc, map);
     }
 }
-
-
