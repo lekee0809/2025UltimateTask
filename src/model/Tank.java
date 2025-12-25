@@ -1,6 +1,8 @@
 package model;
 
 import infra.GameConfig;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
@@ -14,6 +16,10 @@ public abstract class Tank {
     public double x, y;                 // 位置
     public double width, height;        // 尺寸
     public boolean alive = true;        // 存活状态
+
+    //  定义可观察的X/Y属性（核心）
+    private final DoubleProperty xProperty = new SimpleDoubleProperty(0); // 初始值0
+    private final DoubleProperty yProperty = new SimpleDoubleProperty(0);
 
     // ========== 平滑旋转系统 ==========
     private double logicRotation = 0.0;     // 逻辑角度（0-360度）
@@ -429,7 +435,13 @@ public abstract class Tank {
     public int getBulletDamage() { return bulletDamage; }
     public double getBulletSpeed() { return bulletSpeed; }
     public boolean isPlayer() { return type == TankType.PLAYER_GREEN; }
-
+    // 2. 对外暴露属性对象（供绑定用）
+    public DoubleProperty xProperty() {
+        return xProperty;
+    }
+    public DoubleProperty yProperty() {
+        return yProperty;
+    }
     public void setImage(Image image) {
         this.tankImage = image;
     }
