@@ -17,6 +17,7 @@ import map.MapModel;
 import model.Bullet;
 import model.Tank;
 import controller.InputHandler;
+import infra.GameLoop;
 
 import static infra.GameConfig.SCREEN_WIDTH;
 import static infra.GameConfig.SCREEN_HEIGHT;
@@ -31,7 +32,7 @@ public abstract class BaseGameScene {
     protected Scene scene;
     protected final double WIDTH = SCREEN_WIDTH;
     protected final double HEIGHT = SCREEN_HEIGHT;
-
+    protected GameLoop gameLoop; // <--- 新增这行，用于控制循环启动/暂停
     // ========== 补充分层画布（地图/坦克/子弹） ==========
     // 地图层（底层）
     protected Canvas mapCanvas;
@@ -66,6 +67,9 @@ public abstract class BaseGameScene {
         initModeSpecificLogic();
         // 5. 创建并绑定场景
         createScene();
+        // 6. 启动游戏主循环
+        startGameLoop(); // <--- 新增这行
+
     }
 
     // ========== 完整初始化分层UI（地图+坦克+子弹画布） ==========
@@ -161,6 +165,29 @@ public abstract class BaseGameScene {
             tipText.setOpacity(0);
         }
     }
+
+    // ========== 游戏主循环控制 ==========
+    private void startGameLoop() {
+        gameLoop = new GameLoop() {
+            @Override
+            public void onUpdate() {
+                // 每秒执行 60 次的物理逻辑
+                updateGameLogic();
+            }
+
+            @Override
+            public void onRender() {
+                // 跟随屏幕刷新率的绘图逻辑
+                clearAllLayers(); // 先清空
+                renderGameFrame(); // 再重绘
+            }
+        };
+        gameLoop.start();
+    }
+
+    // 留给子类 (StageGameScene/TwoPlayerGameScene) 去具体实现
+    protected abstract void updateGameLogic(); // 这里写坦克移动、碰撞检测
+    protected abstract void renderGameFrame(); // 这里调用 drawMap, drawTank 等
 
     private void initCommonInput() {
         inputHandler = new InputHandler(this);
