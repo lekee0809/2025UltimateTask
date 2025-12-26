@@ -497,24 +497,77 @@ public class StageGameScene extends BaseGameScene {
     /**
      * 更新敌人坦克（AI）
      */
-    private void updateEnemyTanks() {
-        long currentTime = System.currentTimeMillis();
+// 在 StageGameScene.java 中替换这个方法
 
-        for (Tank enemy : enemyTanks) {
-            if (!enemy.isAlive()) {
-                continue;
+    /**
+     * 更新敌人坦克（AI + 物理移动）
+     */
+    private void updateEnemyTanks() {
+        // 1. 计算两帧之间的时间差 (秒)，用于 AI 计时器
+        // 假设是 60FPS，每次大约 0.016 秒
+        double deltaTime = 0.016;
+
+        for (int i = 0; i < enemyTanks.size(); i++) {
+            Tank enemy = enemyTanks.get(i);
+            if (!enemy.isAlive()) continue;
+
+            // ========== 修复点 1：激活 AI 大脑 ==========
+            // 只有调用了 updateAI，坦克的 isMovingForward 等状态才会被改变
+            if (enemy instanceof EnemyTank) {
+                // 传入地图、玩家对象、时间差
+                ((EnemyTank) enemy).updateAI(map, player, deltaTime);
             }
 
-            // 更新敌人位置
+            // ========== 修复点 2：物理移动 & 撞墙检测 ==========
+            // 这一步会根据上面 AI 设定的方向移动，并处理与地图墙壁的碰撞
+            // 前提是你的 Tank.update(map) 里写了撞墙逻辑
             enemy.update(map);
-        }
 
-        // 更新AI计时器
-        if (currentTime - lastEnemyAIUpdateTime > ENEMY_AI_UPDATE_INTERVAL) {
-            lastEnemyAIUpdateTime = currentTime;
+            // ========== 修复点 3：坦克与坦克之间的碰撞 ==========
+            // 防止敌人重叠，或者敌人穿过玩家
+            checkTankTankCollision(enemy);
         }
     }
 
+    /**
+     * 简单的坦克与坦克碰撞处理（推挤效果）
+     */
+    private void checkTankTankCollision(Tank currentTank) {
+        // 1. 检查与玩家的碰撞
+        if (player != null && player.isAlive() && currentTank != player) {
+            if (isColliding(currentTank, player)) {
+                resolveOverlap(currentTank, player);
+            }
+        }
+
+        // 2. 检查与其他敌人的碰撞
+        for (Tank other : enemyTanks) {
+            if (other != currentTank && other.isAlive()) {
+                if (isColliding(currentTank, other)) {
+                    resolveOverlap(currentTank, other);
+                }
+            }
+        }
+    }
+
+    /**
+     * 处理重叠：简单地把 currentTank 弹回去一点点
+     */
+    private void resolveOverlap(Tank t1, Tank t2) {
+        // 计算中心点距离
+        double dx = t1.getCenterX() - t2.getCenterX();
+        double dy = t1.getCenterY() - t2.getCenterY();
+
+        // 简单的弹开逻辑：往反方向推
+        // 推的力度可以根据需要调整，这里设为 2 像素
+        double pushForce = 2.0;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            t1.x += (dx > 0) ? pushForce : -pushForce;
+        } else {
+            t1.y += (dy > 0) ? pushForce : -pushForce;
+        }
+    }
     /**
      * 更新子弹
      */

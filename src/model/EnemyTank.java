@@ -261,27 +261,28 @@ public abstract class EnemyTank extends Tank {
     /**
      * 转向目标角度
      */
+// 找到 rotateTowardsAngle 方法，修改里面的左右判断
+
     protected void rotateTowardsAngle(double targetAngle) {
         double currentAngle = getDisplayRotation();
         double angleDiff = normalizeAngle180(targetAngle - currentAngle);
 
         if (Math.abs(angleDiff) > 5) {
             if (angleDiff > 0) {
-                // 需要向左转
-                setRotatingLeft(true);
-                setRotatingRight(false);
-            } else {
-                // 需要向右转
+                // JavaFX 中，角度增加是顺时针（向右转）
+                // 原代码这里写的是 Left，请改为 Right
                 setRotatingRight(true);
                 setRotatingLeft(false);
+            } else {
+                // 角度减少是逆时针（向左转）
+                setRotatingLeft(true);
+                setRotatingRight(false);
             }
         } else {
-            // 角度足够接近，停止旋转
             setRotatingLeft(false);
             setRotatingRight(false);
         }
     }
-
     /**
      * 角度归一化到-180到180度
      */

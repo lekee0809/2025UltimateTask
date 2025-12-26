@@ -4,7 +4,7 @@ public final class LevelData {
 
     private LevelData() {}
     // LEVEL 3 —— 复杂关（30×22）
- public static final int[][] LEVEL_3 = {
+    public static final int[][] LEVEL_3 = {
             // 第0-1行：上边界，四角有2×2石墙
             {0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2},
             {0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,2,2,2,2,0,0,0,0,0,0,4,0,0,2,2},
