@@ -5,11 +5,8 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
-import model.Bullet;
-import model.MapModel;
-import model.PlayerTank; // 确保引用具体的 Tank 类
+import model.*;
 import infra.GameConfig;
-import model.Tile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -137,5 +134,12 @@ public class TwoPlayerGameScene extends BaseGameScene {
     private void renderGameOver() {
         GraphicsContext gc = mapGc;
         // [占位符] 绘制 "Player X Wins" 大字
+    }
+    /**
+     * 重置模式专属数据（核心实现）
+     * 子类必须实现的抽象方法
+     */
+    @Override
+    protected void resetModeSpecificData() {
     }
 }
