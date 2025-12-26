@@ -25,6 +25,7 @@ import static infra.GameConfig.SCREEN_HEIGHT;
 /**
  * 游戏战斗场景类
  * 功能：整合地图渲染、坦克/子弹绘制、输入监听、UI显示等核心游戏场景逻辑
+ * 
  */
 public abstract class BaseGameScene {
     // 核心场景属性

@@ -109,6 +109,11 @@ public class StageGameScene extends BaseGameScene {
         }
     }
 
+    @Override
+    protected void resetModeSpecificData() {
+
+    }
+
     // ========== 返回主菜单方法 ==========
     private void returnToMainMenu() {
         System.out.println("⚠️ 返回主菜单");
