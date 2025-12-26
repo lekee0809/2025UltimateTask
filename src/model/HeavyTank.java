@@ -3,11 +3,14 @@ package model;
 import infra.GameConfig;
 import javafx.scene.image.Image;
 
-public class HeavyTank extends Tank {
+/**
+ * 重型坦克 - 防御型AI
+ */
+public class HeavyTank extends EnemyTank {
 
     public HeavyTank(double x, double y) {
         super(x, y,
-                TankType.ENEMY_HEAVY,
+                Tank.TankType.ENEMY_HEAVY,
                 GameConfig.TANK_SPEED * GameConfig.HEAVY_SPEED_MULTIPLIER,
                 GameConfig.TANK_ROTATION_SPEED * GameConfig.HEAVY_ROTATION_MULTIPLIER,
                 GameConfig.HEAVY_HEALTH,
@@ -16,13 +19,18 @@ public class HeavyTank extends Tank {
                 GameConfig.BULLET_SPEED * GameConfig.HEAVY_BULLET_SPEED_MULTIPLIER,
                 GameConfig.HEAVY_SCORE_VALUE);
 
+        // 重型坦克AI参数
+        this.sightRange = 350.0;       // 视野较短
+        this.chaseRange = 250.0;
+        this.attackRange = 300.0;      // 远程攻击
+        this.attackAngleThreshold = 10.0; // 需要精确瞄准
+
         setSmoothFactor(0.1);
     }
 
     @Override
     protected void loadImage() {
         try {
-            // 注意：你的图片文件名是 tank_blue.png.png（双重.png）
             this.imagePath = "/images/tank_blue.png.png";
             this.tankImage = new Image(this.imagePath);
 
@@ -40,10 +48,10 @@ public class HeavyTank extends Tank {
 
     private void loadFallbackImage(String color) {
         String[] fallbackPaths = {
-                "/images/tank_blue.png",           // 去掉重复的.png
-                "/images/" + color + "_tank.png",  // blue_tank.png
-                "/images/heavy_tank.png",          // 重型坦克通用
-                "/images/enemy_tank.png",          // 通用敌人坦克
+                "/images/tank_blue.png",
+                "/images/" + color + "_tank.png",
+                "/images/heavy_tank.png",
+                "/images/enemy_tank.png",
         };
 
         for (String path : fallbackPaths) {
@@ -67,5 +75,15 @@ public class HeavyTank extends Tank {
     @Override
     public String getColorDescription() {
         return "蓝色重型坦克";
+    }
+
+    @Override
+    public String getAIType() {
+        return "防御型AI - 高生命值，远程精准射击";
+    }
+
+    @Override
+    public double getAIAggressiveness() {
+        return 0.4; // 侵略性较低，偏防御
     }
 }

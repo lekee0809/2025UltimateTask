@@ -17,6 +17,9 @@ import model.TileType;
  */
 public class MapModel {
 
+    public static final int LEVEL_1 = 1;
+    public static final int LEVEL_2 = 2;
+    public static final int LEVEL_3 = 3;
     /** 地图行列 */
     private final int rows = MapConstants.MAP_ROWS;
     private final int cols = MapConstants.MAP_COLS;
