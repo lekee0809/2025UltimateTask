@@ -498,7 +498,12 @@ public abstract class Tank extends Entity {
     public double getBulletSpeed() { return bulletSpeed; }
     public boolean isPlayer() { return type == TankType.PLAYER_GREEN; }
 // 在 Tank 类中添加以下 getter/setter
-
+    public void setX(double x){
+        this.x=x;
+    }
+    public void setY(double y){
+        this.y=y;
+    }
     // ========== 角度相关 ==========
     public double getLogicRotation() {
         return logicRotation;
@@ -559,7 +564,9 @@ public abstract class Tank extends Entity {
     }
 
 
-
+    public void resetHealth(){
+        this.health=maxHealth;
+    }
     public void setVx(double vx) {
         this.vx = vx;
     }
@@ -568,6 +575,7 @@ public abstract class Tank extends Entity {
     public void setVy(double vy) {
         this.vy = vy;
     }
+
 
     // 2. 对外暴露属性对象（供绑定用）
     public DoubleProperty xProperty() {
