@@ -121,7 +121,10 @@ public class MapModel {
         // 其他情况：子弹消失
         return true;
     }
-
+    /**地图重置（用于重新开始本关）*/
+    public void reset(int level) {
+        loadLevel(level);
+    }
     /* ===================== 控制接口 ===================== */
 
     public void setCampaignMode(boolean campaignMode) {
