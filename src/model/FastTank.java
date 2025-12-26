@@ -26,7 +26,7 @@ public class FastTank extends Tank {
     @Override
     protected void loadImage() {
         try {
-            this.imagePath = GameConfig.IMAGE_PATH + "tank_purple.png";
+            this.imagePath = "/images/tank_purple.png.png";
             this.tankImage = new Image(this.imagePath);
             if (tankImage.isError()) {
                 System.err.println("快速坦克图片加载失败: " + imagePath);
