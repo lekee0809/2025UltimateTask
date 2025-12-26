@@ -477,60 +477,11 @@ public class StageGameScene extends BaseGameScene {
 
             // 更新敌人位置
             enemy.update(map);
-
-            // 定期更新敌人AI行为
-            if (currentTime - lastEnemyAIUpdateTime > ENEMY_AI_UPDATE_INTERVAL) {
-                updateEnemyAI(enemy);
-
-                // 敌人尝试开火
-                if (random.nextDouble() < 0.3) { // 30%概率开火
-                    Bullet bullet = enemy.tryFire();
-                    if (bullet != null) {
-                        bullets.add(bullet);
-                    }
-                }
-            }
         }
 
         // 更新AI计时器
         if (currentTime - lastEnemyAIUpdateTime > ENEMY_AI_UPDATE_INTERVAL) {
             lastEnemyAIUpdateTime = currentTime;
-        }
-    }
-
-    /**
-     * 敌人AI逻辑
-     */
-    private void updateEnemyAI(Tank enemy) {
-        if (random == null) {
-            random = new Random();
-        }
-
-        // 简单AI：随机决定移动方向
-        double rand = random.nextDouble();
-
-        if (rand < 0.3) { // 30%概率前进
-            enemy.setMovingForward(true);
-            enemy.setMovingBackward(false);
-        } else if (rand < 0.5) { // 20%概率后退
-            enemy.setMovingForward(false);
-            enemy.setMovingBackward(true);
-        } else { // 50%概率停止
-            enemy.setMovingForward(false);
-            enemy.setMovingBackward(false);
-        }
-
-        // 随机决定旋转方向
-        rand = random.nextDouble();
-        if (rand < 0.4) { // 40%概率左转
-            enemy.setRotatingLeft(true);
-            enemy.setRotatingRight(false);
-        } else if (rand < 0.8) { // 40%概率右转
-            enemy.setRotatingLeft(false);
-            enemy.setRotatingRight(true);
-        } else { // 20%概率不旋转
-            enemy.setRotatingLeft(false);
-            enemy.setRotatingRight(false);
         }
     }
 
