@@ -2,478 +2,978 @@ package view;
 
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Label;
+import javafx.scene.paint.Color;
+import infra.GameConfig;
+
+import javafx.animation.AnimationTimer;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
-import model.*;
 import map.MapModel;
+import map.GameLevelConfig;
+import map.EnemySpawn;
+import model.*;
+import model.Tank.TankType;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 
 /**
- * 三关闯关模式游戏场景
- * 功能：3关卡切换 + 玩家血量显示 + 计时显示 + 敌方剩余血量显示
+ * 闯关模式游戏场景类
+ * 核心功能：
+ * 1. 加载不同关卡的地图配置
+ * 2. 根据关卡难度生成不同数量和类型的敌人坦克
+ * 3. 显示玩家血量、游戏时间、当前分数
+ * 4. 过关判定：消灭所有敌人且达到目标分数
+ * 5. 多关卡支持（当前3关）
  */
 public class StageGameScene extends BaseGameScene {
 
-    // 游戏核心数据
-    private Tank player;
-    private List<Tank> enemies;
-    private List<Bullet> bullets;
-    private Tile[][] map;
-    private AnimationTimer gameLoop;
+    // ========== 游戏核心对象 ==========
+    private PlayerTank player;              // 玩家坦克
+    private List<Tank> enemyTanks;         // 敌人坦克列表
+    private List<Bullet> bullets;          // 子弹列表
+    private MapModel mapModel;             // 地图模型
+    private Tile[][] map;                  // 地图瓦片数组
 
-    // 关卡配置
-    private int currentLevel = 1; // 当前关卡（1/2/3）
-    private final int TOTAL_LEVEL = 3; // 总关卡数
+    // ========== 游戏状态变量 ==========
+    private int currentLevel;              // 当前关卡编号（1-3）
+    private int playerScore;               // 玩家当前得分
+    private int playerHealth;              // 玩家当前血量（显示用）
+    private long levelStartTime;           // 关卡开始时间戳（毫秒）
+    private long gameElapsedTime;          // 游戏已进行时间（秒）
+    private boolean isGameOver;            // 游戏结束标志
+    private boolean isLevelComplete;       // 关卡完成标志
+    private int targetScore;               // 当前关卡目标分数
 
-    // UI组件（血量、计时器、敌方血量）
-    private Label playerHpLabel;    // 左上角玩家血量
-    private Label timerLabel;       // 顶部中间计时器
-    private Label enemyHpLabel;     // 右上角敌方血量
+    // ========== 游戏计时器 ==========
+    private AnimationTimer gameLoop;       // 游戏主循环
 
-    // 计时相关
-    private long startTime;         // 关卡开始时间（纳秒）
-    private double elapsedTime;     // 已流逝时间（秒）
+    // ========== 随机数生成器 ==========
+    private Random random;                 // 修复：延迟初始化
 
-    public StageGameScene(Stage primaryStage) {
-        super(primaryStage);
-        // 初始化UI组件
-        initGameUI();
-    }
+    // ========== 敌人AI相关 ==========
+    private static final long ENEMY_AI_UPDATE_INTERVAL = 1000; // 敌人AI更新间隔（毫秒）
+    private long lastEnemyAIUpdateTime = 0; // 上次AI更新时间
 
-    /**
-     * 初始化游戏专属UI（血量、计时器、敌方血量）
-     */
-    private void initGameUI() {
-        // 1. 玩家血量标签（左上角）
-        playerHpLabel = new Label();
-        playerHpLabel.setFont(Font.font("Arial", 18));
-        playerHpLabel.setTextFill(Color.RED);
-        playerHpLabel.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-padding: 5px;");
-        playerHpLabel.setLayoutX(10);
-        playerHpLabel.setLayoutY(10);
+    // ========== 界面常量 ==========
+    private static final Color HUD_TEXT_COLOR = Color.WHITE;
+    private static final Color HEALTH_COLOR = Color.RED;
+    private static final Color SCORE_COLOR = Color.GOLD;
+    private static final Color TIME_COLOR = Color.CYAN;
+    private static final Color LEVEL_COLOR = Color.LIMEGREEN;
+    private static final Color GAME_OVER_COLOR = Color.RED;
+    private static final Color LEVEL_COMPLETE_COLOR = Color.YELLOW;
 
-        // 2. 计时器标签（顶部中间）
-        timerLabel = new Label("00:00");
-        timerLabel.setFont(Font.font("Arial", 18));
-        timerLabel.setTextFill(Color.WHITE);
-        timerLabel.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-padding: 5px;");
-        // 居中显示（基于屏幕宽度）
-        timerLabel.setLayoutX((WIDTH - 60) / 2);
-        timerLabel.setLayoutY(10);
+    private static final Font HUD_FONT_SMALL = Font.font("Arial", 16);
+    private static final Font HUD_FONT_MEDIUM = Font.font("Arial", 20);
+    private static final Font HUD_FONT_LARGE = Font.font("Arial Bold", 32);
 
-        // 3. 敌方血量标签（右上角）
-        enemyHpLabel = new Label();
-        enemyHpLabel.setFont(Font.font("Arial", 18));
-        enemyHpLabel.setTextFill(Color.ORANGE);
-        enemyHpLabel.setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-padding: 5px;");
-        enemyHpLabel.setLayoutX(WIDTH - 150);
-        enemyHpLabel.setLayoutY(10);
-
-        // 添加到根布局
-        gameRoot.getChildren().addAll(playerHpLabel, timerLabel, enemyHpLabel);
+    // ========== 构造函数 ==========
+    public StageGameScene(Stage stage) {
+        super(stage);
     }
 
     @Override
     protected void initModeSpecificLogic() {
-        // 初始化集合，解决空指针
-        this.enemies = new ArrayList<>();
-        this.bullets = new ArrayList<>();
+        // 初始化随机数生成器（修复NullPointerException）
+        random = new Random();
 
-        // 加载当前关卡资源
-        loadLevelResources(currentLevel);
+        // 初始化游戏状态
+        currentLevel = 1;
+        playerScore = 0;
+        playerHealth = GameConfig.PLAYER_HEALTH;
+        isGameOver = false;
+        isLevelComplete = false;
 
-        // 启动游戏循环
-        startGameLoop();
+        // 初始化对象列表
+        enemyTanks = new ArrayList<>();
+        bullets = new ArrayList<>();
 
-        // 显示关卡提示
-        showTipText("第" + currentLevel + "关 - 消灭所有敌人！", 3.0);
-    }
+        System.out.println("🚀 开始初始化闯关模式...");
 
-    /**
-     * 加载指定关卡的资源（地图+玩家+敌人）
-     * @param level 关卡数（1/2/3）
-     */
-    private void loadLevelResources(int level) {
-        // 1. 重置计时
-        startTime = System.nanoTime();
-        elapsedTime = 0;
+        try {
+            // 加载第一关
+            loadLevel(currentLevel);
 
-        // 2. 加载对应关卡地图
-        MapModel mapModel = switch (level) {
-            case 1 -> new MapModel(MapModel.LEVEL_1);
-            case 2 -> new MapModel(MapModel.LEVEL_2);
-            case 3 -> new MapModel(MapModel.LEVEL_3);
-            default -> new MapModel(MapModel.LEVEL_1);
-        };
-        this.map = mapModel.getTiles();
+            // 启动游戏主循环
+            startGameLoop();
 
-        // 3. 初始化玩家（不同关卡可调整初始位置/血量）
-        double playerX = switch (level) {
-            case 1 -> 50;
-            case 2 -> 100;
-            case 3 -> 150;
-            default -> 50;
-        };
-        player = new PlayerTank(playerX, 50);
-        // 重置玩家血量（关卡切换后满血）
-        player.resetHealth();
-
-        // 4. 初始化对应关卡敌人（难度递增）
-        initEnemiesByLevel(level);
-
-        // 5. 清空子弹（避免关卡切换残留）
-        bullets.clear();
-
-        // 6. 更新UI初始值
-        updatePlayerHpUI();
-        updateEnemyHpUI();
-        updateTimerUI();
-    }
-
-    /**
-     * 根据关卡初始化敌人（难度递增：数量+血量+攻击力）
-     * @param level 关卡数
-     */
-    private void initEnemiesByLevel(int level) {
-        enemies.clear(); // 清空上一关敌人
-        int enemyCount = switch (level) {
-            case 1 -> 3;  // 第1关3个普通敌人
-            case 2 -> 5;  // 第2关5个普通敌人
-            case 3 -> 7;  // 第3关7个强化敌人
-            default -> 3;
-        };
-
-        // 生成敌人（不同关卡位置/类型差异化）
-        for (int i = 0; i < enemyCount; i++) {
-            double enemyX = 200 + (i * 100); // 横向排列
-            double enemyY = 100 + (level * 50); // 关卡越高，敌人位置越靠上
-            Tank enemy;
-            if (level == 3) {
-                enemy = new HeavyTank(enemyX, enemyY); // 强化敌人（血量/攻击力更高）
-            } else {
-                enemy = new NormalTank(enemyX, enemyY); // 普通敌人
-            }
-            enemies.add(enemy);
+            System.out.println("✅ 闯关模式初始化完成");
+        } catch (Exception e) {
+            System.err.println("❌ 闯关模式初始化失败: " + e.getMessage());
+            e.printStackTrace();
+            // 出错时返回主菜单
+            returnToMainMenu();
         }
     }
 
-    /**
-     * 启动游戏循环（包含计时+UI更新）
-     */
-    private void startGameLoop() {
-        // 防重复启动
+    // ========== 返回主菜单方法 ==========
+    private void returnToMainMenu() {
+        System.out.println("⚠️ 返回主菜单");
         if (gameLoop != null) {
             gameLoop.stop();
         }
+        // 这里需要调用返回主菜单的逻辑，你需要根据你的项目结构来实现
+        // 例如：StartScene startScene = new StartScene(primaryStage);
+        // primaryStage.setScene(startScene.getScene());
+    }
 
+    // ========== 关卡加载系统 ==========
+    /**
+     * 加载指定关卡
+     * @param level 关卡编号（1-3）
+     */
+    private void loadLevel(int level) {
+        System.out.println("🚀 开始加载第 " + level + " 关...");
+
+        // 重置关卡状态
+        isLevelComplete = false;
+        levelStartTime = System.currentTimeMillis();
+        gameElapsedTime = 0;
+
+        // 获取当前关卡的目标分数
+        targetScore = GameLevelConfig.getTargetScore(level);
+
+        try {
+            // 1. 加载地图
+            System.out.println("📝 加载地图...");
+            mapModel = new MapModel(level);
+            map = mapModel.getTiles();
+            System.out.println("✅ 地图加载完成，尺寸: " + map.length + "x" + (map.length > 0 ? map[0].length : 0));
+
+            // 2. 初始化玩家坦克
+            System.out.println("🎮 初始化玩家坦克...");
+            initializePlayerTank(level);
+
+            // 3. 生成敌人坦克
+            System.out.println("🤖 生成敌人坦克...");
+            generateEnemyTanks(level);
+
+            // 4. 清空子弹
+            bullets.clear();
+
+            System.out.println("✅ 第 " + level + " 关加载完成！");
+            System.out.println("   目标分数: " + targetScore);
+            System.out.println("   敌人数量: " + enemyTanks.size());
+            System.out.println("   玩家血量: " + playerHealth);
+            System.out.println("   地图大小: " + GameConfig.MAP_ROWS + "x" + GameConfig.MAP_COLS);
+
+        } catch (Exception e) {
+            System.err.println("❌ 加载第 " + level + " 关失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("关卡加载失败", e);
+        }
+    }
+
+    /**
+     * 初始化玩家坦克
+     * 根据关卡不同，玩家可能出现在不同位置
+     */
+    private void initializePlayerTank(int level) {
+        double playerX, playerY;
+
+        // 根据不同关卡设置不同的出生点
+        switch (level) {
+            case 1:
+                playerX = 100; // 左下角
+                playerY = GameConfig.SCREEN_HEIGHT - 150;
+                break;
+            case 2:
+                playerX = GameConfig.SCREEN_WIDTH / 2 - 50; // 中间偏左
+                playerY = GameConfig.SCREEN_HEIGHT - 100;
+                break;
+            case 3:
+                playerX = GameConfig.SCREEN_WIDTH - 150; // 右下角
+                playerY = GameConfig.SCREEN_HEIGHT - 150;
+                break;
+            default:
+                playerX = 100;
+                playerY = 100;
+        }
+
+        // 确保出生点不在地图障碍物上
+        playerX = adjustSpawnPosition(playerX, playerY, true);
+
+        player = new PlayerTank(playerX, playerY);
+        playerHealth = player.getHealth(); // 同步血量显示
+
+        System.out.println("✅ 玩家坦克初始化完成，位置: (" + playerX + ", " + playerY + ")");
+    }
+
+    /**
+     * 生成敌人坦克
+     * 根据关卡配置生成不同数量和类型的敌人
+     */
+    private void generateEnemyTanks(int level) {
+        enemyTanks.clear();
+
+        // 获取当前关卡的敌人配置
+        EnemySpawn[] enemyConfigs = GameLevelConfig.getEnemyConfig(level);
+
+        System.out.println("📊 敌人配置: " + (enemyConfigs != null ? enemyConfigs.length : 0) + " 种类型");
+
+        for (EnemySpawn config : enemyConfigs) {
+            TankType type = config.type;
+            int count = config.count;
+
+            System.out.println("   - " + type + ": " + count + " 辆");
+
+            for (int i = 0; i < count; i++) {
+                // 生成敌人坦克
+                Tank enemy = createEnemyTank(type, level);
+                if (enemy != null) {
+                    enemyTanks.add(enemy);
+                }
+            }
+        }
+
+        System.out.println("✅ 生成 " + enemyTanks.size() + " 个敌人坦克");
+    }
+
+    /**
+     * 创建单个敌人坦克
+     */
+    private Tank createEnemyTank(TankType type, int level) {
+        if (random == null) {
+            System.err.println("❌ 随机数生成器未初始化！");
+            random = new Random(); // 紧急初始化
+        }
+
+        double enemyX, enemyY;
+
+        // 根据不同关卡设置不同的敌人出生区域
+        switch (level) {
+            case 1: // 第一关：敌人在上半部分随机生成
+                enemyX = 100 + random.nextDouble() * (GameConfig.SCREEN_WIDTH - 200);
+                enemyY = 100 + random.nextDouble() * (GameConfig.SCREEN_HEIGHT / 2 - 150);
+                break;
+            case 2: // 第二关：敌人在两侧生成
+                if (random.nextBoolean()) {
+                    enemyX = 50 + random.nextDouble() * 100; // 左侧
+                } else {
+                    enemyX = GameConfig.SCREEN_WIDTH - 150 + random.nextDouble() * 100; // 右侧
+                }
+                enemyY = 100 + random.nextDouble() * (GameConfig.SCREEN_HEIGHT / 2);
+                break;
+            case 3: // 第三关：敌人在上半部分和两侧都有
+                if (random.nextBoolean()) {
+                    enemyX = 100 + random.nextDouble() * (GameConfig.SCREEN_WIDTH - 200);
+                    enemyY = 80 + random.nextDouble() * 100;
+                } else {
+                    enemyX = random.nextBoolean() ?
+                            50 + random.nextDouble() * 100 :
+                            GameConfig.SCREEN_WIDTH - 150 + random.nextDouble() * 100;
+                    enemyY = 150 + random.nextDouble() * 200;
+                }
+                break;
+            default:
+                enemyX = 100 + random.nextDouble() * 500;
+                enemyY = 100 + random.nextDouble() * 300;
+        }
+
+        // 确保敌人不在障碍物上生成
+        enemyX = adjustSpawnPosition(enemyX, enemyY, false);
+
+        // 根据类型创建不同的敌人坦克
+        Tank enemy = null;
+        try {
+            switch (type) {
+                case ENEMY_NORMAL:
+                    enemy = new NormalTank(enemyX, enemyY);
+                    break;
+                case ENEMY_FAST:
+                    enemy = new FastTank(enemyX, enemyY);
+                    break;
+                case ENEMY_HEAVY:
+                    enemy = new HeavyTank(enemyX, enemyY);
+                    break;
+                default:
+                    System.err.println("❌ 未知的坦克类型: " + type);
+                    return null;
+            }
+
+            if (enemy != null) {
+                System.out.println("   ✓ 创建 " + type + " 坦克，位置: (" + enemyX + ", " + enemyY + ")");
+            }
+
+        } catch (Exception e) {
+            System.err.println("❌ 创建敌人坦克失败: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return enemy;
+    }
+
+    /**
+     * 调整出生位置，确保不在地图障碍物上
+     */
+    private double adjustSpawnPosition(double x, double y, boolean isPlayer) {
+        if (map == null || map.length == 0) {
+            System.err.println("⚠️ 地图未初始化，无法调整出生位置");
+            return x;
+        }
+
+        double adjustedX = x;
+        double adjustedY = y;
+        int maxAttempts = 10; // 减少尝试次数以提高性能
+        int attempt = 0;
+
+        while (attempt < maxAttempts) {
+            // 检查坦克四个角是否在可通行区域
+            boolean canSpawn = true;
+
+            // 检查坦克矩形区域的四个角
+            double[] cornersX = {adjustedX, adjustedX + GameConfig.TANK_SIZE,
+                    adjustedX, adjustedX + GameConfig.TANK_SIZE};
+            double[] cornersY = {adjustedY, adjustedY,
+                    adjustedY + GameConfig.TANK_SIZE, adjustedY + GameConfig.TANK_SIZE};
+
+            for (int i = 0; i < 4; i++) {
+                int col = (int) (cornersX[i] / GameConfig.GRID_SIZE);
+                int row = (int) (cornersY[i] / GameConfig.GRID_SIZE);
+
+                // 边界检查
+                if (row < 0 || row >= GameConfig.MAP_ROWS ||
+                        col < 0 || col >= GameConfig.MAP_COLS) {
+                    canSpawn = false;
+                    break;
+                }
+
+                // 检查瓦片是否可通行
+                if (map[row][col] != null) {
+                    Tile tile = map[row][col];
+                    if (tile != null && !tile.getType().isTankPassable()) {
+                        canSpawn = false;
+                        break;
+                    }
+                }
+            }
+
+            if (canSpawn) {
+                return adjustedX; // 找到合适位置
+            }
+
+            // 尝试新位置
+            if (isPlayer) {
+                // 玩家：在底部区域随机尝试
+                adjustedX = 100 + random.nextDouble() * (GameConfig.SCREEN_WIDTH - 200);
+                adjustedY = GameConfig.SCREEN_HEIGHT - 200 + random.nextDouble() * 100;
+            } else {
+                // 敌人：在上半区域随机尝试
+                adjustedX = 100 + random.nextDouble() * (GameConfig.SCREEN_WIDTH - 200);
+                adjustedY = 100 + random.nextDouble() * (GameConfig.SCREEN_HEIGHT / 2 - 100);
+            }
+
+            attempt++;
+        }
+
+        // 如果找不到合适位置，返回原始位置（游戏会处理碰撞）
+        System.out.println("⚠️ 无法找到理想出生点，使用原始位置 (" + x + ", " + y + ")");
+        return x;
+    }
+
+    // ========== 游戏主循环 ==========
+    private void startGameLoop() {
         gameLoop = new AnimationTimer() {
             @Override
             public void handle(long now) {
                 try {
-                    // 更新计时
-                    elapsedTime = (now - startTime) / 1_000_000_000.0;
-                    // 更新游戏状态
-                    update();
-                    // 渲染画面
-                    render();
-                    // 更新UI（血量、计时、敌方血量）
-                    updateAllUI();
+                    // 计算游戏时间
+                    gameElapsedTime = (System.currentTimeMillis() - levelStartTime) / 1000;
+
+                    // 更新游戏逻辑
+                    updateGame();
+
+                    // 渲染游戏画面
+                    renderGame();
+
+                    // 检查游戏状态
+                    checkGameState();
                 } catch (Exception e) {
-                    System.err.println("游戏循环异常：" + e.getMessage());
+                    System.err.println("❌ 游戏主循环异常: " + e.getMessage());
+                    e.printStackTrace();
+                    // 停止游戏循环防止崩溃
+                    stop();
                 }
             }
         };
+
         gameLoop.start();
+        System.out.println("🎮 游戏主循环已启动");
     }
 
     /**
-     * 更新游戏状态（玩家/敌人/子弹/碰撞检测）
+     * 更新游戏逻辑
      */
-    private void update() {
-        // 1. 玩家更新
-        if (player != null && player.isAlive()) {
-            player.setMovingForward(inputHandler.isWPressed());
-            player.setMovingBackward(inputHandler.isSPressed());
-            player.setRotatingLeft(inputHandler.isAPressed());
-            player.setRotatingRight(inputHandler.isDPressed());
+    private void updateGame() {
+        if (isGameOver || isLevelComplete) {
+            return; // 游戏结束或关卡完成时不更新
+        }
 
-            // 发射子弹
-            if (inputHandler.isJPressed()) {
-                Bullet b = player.tryFire();
-                if (b != null) {
-                    bullets.add(b);
+        try {
+            // 1. 更新玩家坦克（根据输入）
+            updatePlayerTank();
+
+            // 2. 更新敌人坦克（AI）
+            updateEnemyTanks();
+
+            // 3. 更新所有子弹
+            updateBullets();
+
+            // 4. 检查碰撞
+            checkCollisions();
+
+            // 5. 清理已销毁的对象
+            cleanupObjects();
+        } catch (Exception e) {
+            System.err.println("❌ 游戏更新异常: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 更新玩家坦克
+     */
+    private void updatePlayerTank() {
+        if (player == null || !player.isAlive()) {
+            return;
+        }
+
+        // 设置移动状态（基于输入）
+        player.setMovingForward(inputHandler.isWPressed());
+        player.setMovingBackward(inputHandler.isSPressed());
+        player.setRotatingLeft(inputHandler.isAPressed());
+        player.setRotatingRight(inputHandler.isDPressed());
+
+        // 处理射击（J键）
+        if (inputHandler.isJPressed()) {
+            Bullet bullet = player.tryFire();
+            if (bullet != null) {
+                bullets.add(bullet);
+                // System.out.println("🔫 玩家发射子弹");
+            }
+        }
+
+        // 更新玩家坦克位置
+        player.update(map);
+
+        // 同步血量显示
+        playerHealth = player.getHealth();
+    }
+
+    /**
+     * 更新敌人坦克（AI）
+     */
+    private void updateEnemyTanks() {
+        long currentTime = System.currentTimeMillis();
+
+        for (Tank enemy : enemyTanks) {
+            if (!enemy.isAlive()) {
+                continue;
+            }
+
+            // 更新敌人位置
+            enemy.update(map);
+        }
+
+        // 更新AI计时器
+        if (currentTime - lastEnemyAIUpdateTime > ENEMY_AI_UPDATE_INTERVAL) {
+            lastEnemyAIUpdateTime = currentTime;
+        }
+    }
+
+    /**
+     * 更新子弹
+     */
+    private void updateBullets() {
+        for (Bullet bullet : bullets) {
+            if (bullet.alive) {
+                bullet.update(map);
+            }
+        }
+    }
+
+    /**
+     * 检查碰撞
+     */
+    private void checkCollisions() {
+        // 子弹与坦克碰撞
+        checkBulletTankCollisions();
+
+        // 坦克与坦克碰撞（可选，防止重叠）
+        // checkTankTankCollisions(); // 暂时禁用，可能有问题
+    }
+
+    /**
+     * 检查子弹与坦克的碰撞
+     */
+    private void checkBulletTankCollisions() {
+        for (int i = bullets.size() - 1; i >= 0; i--) {
+            Bullet bullet = bullets.get(i);
+            if (!bullet.alive) continue;
+
+            // 检查子弹与玩家坦克碰撞
+            if (player != null && player.isAlive() && bullet.isEnemy &&
+                    isColliding(bullet, player)) {
+                // 敌人子弹击中玩家
+                player.takeDamage(bullet.damage);
+                bullet.alive = false;
+                System.out.println("💥 玩家被击中，剩余血量: " + player.getHealth());
+                continue;
+            }
+
+            // 检查子弹与敌人坦克碰撞
+            for (int j = enemyTanks.size() - 1; j >= 0; j--) {
+                Tank enemy = enemyTanks.get(j);
+                if (enemy.isAlive() && !bullet.isEnemy &&
+                        isColliding(bullet, enemy)) {
+                    // 玩家子弹击中敌人
+                    enemy.takeDamage(bullet.damage);
+                    bullet.alive = false;
+
+                    // 如果敌人死亡，增加分数
+                    if (!enemy.isAlive()) {
+                        playerScore += enemy.getScoreValue();
+                        System.out.println("🎯 击毁敌人！得分: " + enemy.getScoreValue() +
+                                "，总分: " + playerScore);
+                    }
+                    break;
                 }
             }
-            player.update(map);
-        }
-
-        // 2. 敌人更新（迭代器避免并发修改）
-        Iterator<Tank> enemyIter = enemies.iterator();
-        while (enemyIter.hasNext()) {
-            Tank enemy = enemyIter.next();
-            if (enemy.isAlive()) {
-                enemy.update(map);
-                // 敌人自动射击（难度递增：关卡越高，射击频率越高）
-                if (Math.random() < (0.001 * currentLevel)) {
-                    Bullet b = enemy.tryFire();
-                    if (b != null) bullets.add(b);
-                }
-            } else {
-                enemyIter.remove();
-            }
-        }
-
-        // 3. 子弹更新+碰撞检测
-        Iterator<Bullet> bulletIter = bullets.iterator();
-        while (bulletIter.hasNext()) {
-            Bullet b = bulletIter.next();
-            if (b.isAlive()) {
-                b.update(map);
-                checkBulletCollision(b);
-            } else {
-                bulletIter.remove();
-            }
-        }
-
-        // 4. 通关判断
-        checkLevelClear();
-    }
-
-    /**
-     * 子弹碰撞检测（击中玩家/敌人）
-     */
-    private void checkBulletCollision(Bullet bullet) {
-        // 击中敌人
-        for (Tank enemy : enemies) {
-            if (enemy.isAlive() && isCollided(bullet, enemy)) {
-                enemy.takeDamage(bullet.getDamage() * currentLevel); // 关卡越高，子弹伤害越高
-                bullet.setAlive(false);
-                break;
-            }
-        }
-
-        // 击中玩家
-        if (player != null && player.isAlive() && isCollided(bullet, player)) {
-            player.takeDamage(bullet.getDamage());
-            bullet.setAlive(false);
         }
     }
 
     /**
-     * 矩形碰撞检测
+     * 检查两个实体是否碰撞
      */
-    private boolean isCollided(Bullet b, Tank t) {
-        return b.getX() >= t.getX() && b.getX() <= t.getX() + t.getWidth()
-                && b.getY() >= t.getY() && b.getY() <= t.getY() + t.getHeight();
+    private boolean isColliding(Entity a, Entity b) {
+        if (a == null || b == null) return false;
+
+        return a.x < b.x + b.width &&
+                a.x + a.width > b.x &&
+                a.y < b.y + b.height &&
+                a.y + a.height > b.y;
     }
 
     /**
-     * 通关判断（当前关卡所有敌人消灭）
+     * 清理已销毁的对象
      */
-    private void checkLevelClear() {
-        if (enemies.isEmpty() && player != null && player.isAlive()) {
-            gameLoop.stop(); // 停止循环
+    private void cleanupObjects() {
+        // 清理死亡敌人
+        enemyTanks.removeIf(enemy -> !enemy.isAlive());
 
-            // 最后一关通关
-            if (currentLevel == TOTAL_LEVEL) {
-                showTipText("恭喜通关所有关卡！总用时：" + formatTime(elapsedTime), 0);
-                inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.R, this::restartAllLevels);
-            } else {
-                // 进入下一关
-                showTipText("第" + currentLevel + "关通关！按Enter进入下一关", 0);
-                inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.ENTER, this::enterNextLevel);
-            }
-        }
+        // 清理无效子弹
+        bullets.removeIf(bullet -> !bullet.alive);
+    }
 
-        // 玩家死亡，关卡失败
+    /**
+     * 检查游戏状态
+     */
+    private void checkGameState() {
+        // 检查玩家是否死亡
         if (player != null && !player.isAlive()) {
-            gameLoop.stop();
-            showTipText("关卡失败！按R重新开始当前关卡", 0);
-            inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.R, this::restartCurrentLevel);
+            isGameOver = true;
+            System.out.println("💀 游戏结束！玩家被击败");
+            return;
+        }
+
+        // 检查关卡是否完成
+        if (!isLevelComplete) {
+            checkLevelCompletion();
+        }
+    }
+
+    /**
+     * 检查关卡完成条件
+     */
+    private void checkLevelCompletion() {
+        // 条件1：消灭所有敌人
+        boolean allEnemiesDefeated = enemyTanks.isEmpty();
+
+        // 条件2：达到目标分数
+        boolean scoreReached = playerScore >= targetScore;
+
+        // 过关条件：消灭所有敌人且达到目标分数
+        if (allEnemiesDefeated && scoreReached) {
+            isLevelComplete = true;
+            System.out.println("🎉 第 " + currentLevel + " 关完成！");
+            System.out.println("   得分: " + playerScore + " / " + targetScore);
+            System.out.println("   用时: " + gameElapsedTime + " 秒");
+
+            // 延迟2秒后进入下一关
+            new Thread(() -> {
+                try {
+                    Thread.sleep(2000);
+                    javafx.application.Platform.runLater(this::nextLevel);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }).start();
         }
     }
 
     /**
      * 进入下一关
      */
-    private void enterNextLevel() {
-        currentLevel++;
-        loadLevelResources(currentLevel);
-        startGameLoop();
-        showTipText("第" + currentLevel + "关开始！", 3.0);
-    }
+    private void nextLevel() {
+        if (currentLevel < 3) {
+            currentLevel++;
+            System.out.println("\n=====================");
+            System.out.println("进入第 " + currentLevel + " 关");
+            System.out.println("=====================\n");
 
-    /**
-     * 重启当前关卡
-     */
-    private void restartCurrentLevel() {
-        loadLevelResources(currentLevel);
-        startGameLoop();
-        showTipText("重新开始第" + currentLevel + "关", 2.0);
-    }
+            loadLevel(currentLevel);
+        } else {
+            // 通关游戏
+            System.out.println("🎊🎊🎊 恭喜通关所有关卡！ 🎊🎊🎊");
+            System.out.println("最终得分: " + playerScore);
+            System.out.println("总用时: " + gameElapsedTime + " 秒");
 
-    /**
-     * 重启所有关卡（从第1关开始）
-     */
-    private void restartAllLevels() {
-        currentLevel = 1;
-        loadLevelResources(currentLevel);
-        startGameLoop();
-        showTipText("重新开始所有关卡", 2.0);
-    }
+            // 这里可以添加通关画面或返回主菜单
+            isGameOver = true;
 
-    /**
-     * 渲染游戏画面（分层渲染）
-     */
-    private void render() {
-        GraphicsContext mapContext = mapGc;
-        GraphicsContext tankContext = tankCanvas.getGraphicsContext2D();
-        GraphicsContext bulletContext = bulletCanvas.getGraphicsContext2D();
-
-        // 分层清屏
-        mapContext.setFill(Color.BLACK);
-        mapContext.fillRect(0, 0, WIDTH, HEIGHT);
-        clearCanvas(tankContext);
-        clearCanvas(bulletContext);
-
-        // 绘制地图背景
-        spritePainter.drawMapBackground(mapContext, map);
-
-        // 绘制坦克
-        for (Tank enemy : enemies) {
-            if (enemy.isAlive()) {
-                spritePainter.drawTank(tankContext, enemy);
-            }
+            // 显示通关消息
+            showGameCompleteMessage();
         }
-        if (player != null && player.isAlive()) {
-            spritePainter.drawTank(tankContext, player);
-        }
-
-        // 绘制子弹
-        for (Bullet b : bullets) {
-            if (b.isAlive()) {
-                b.draw(bulletContext);
-            }
-        }
-
-        // 绘制地图前景
-        spritePainter.drawMapForeground(mapContext, map);
     }
 
     /**
-     * 更新所有UI（血量+计时+敌方血量）
+     * 显示游戏完成消息
      */
-    private void updateAllUI() {
-        updatePlayerHpUI();
-        updateTimerUI();
-        updateEnemyHpUI();
+    private void showGameCompleteMessage() {
+        System.out.println("\n🎮 游戏通关！");
+        System.out.println("🎯 最终得分: " + playerScore);
+        System.out.println("⏱️  总用时: " + gameElapsedTime + " 秒");
+        System.out.println("👑 恭喜你完成了所有挑战！");
+
+        // 可以在这里添加返回主菜单的逻辑
+        // returnToMainMenu();
     }
 
+    // ========== 渲染系统 ==========
     /**
-     * 更新玩家血量UI（左上角）
+     * 渲染游戏画面
      */
-    private void updatePlayerHpUI() {
-        if (player == null) {
-            playerHpLabel.setText("玩家血量：0/0");
+    private void renderGame() {
+        GraphicsContext gc = mapGc;
+
+        if (gc == null) {
+            System.err.println("❌ 画布上下文为空！");
             return;
         }
-        String hpText = String.format("玩家血量：%.0f/%.0f", player.getHealth(), player.getMaxHealth());
-        playerHpLabel.setText(hpText);
-    }
 
-    /**
-     * 更新计时器UI（顶部中间）
-     */
-    private void updateTimerUI() {
-        timerLabel.setText("计时：" + formatTime(elapsedTime));
-    }
+        try {
+            // 清空画布（黑色背景）
+            gc.setFill(Color.BLACK);
+            gc.fillRect(0, 0, WIDTH, HEIGHT);
 
-    /**
-     * 更新敌方血量UI（右上角）
-     */
-    private void updateEnemyHpUI() {
-        if (enemies.isEmpty()) {
-            enemyHpLabel.setText("敌方剩余：0");
-            return;
+            // 1. 绘制地图背景（地板、砖墙、石头、水）
+            if (map != null) {
+                spritePainter.drawMapBackground(gc, map);
+            }
+
+            // 2. 绘制敌人坦克
+            for (Tank enemy : enemyTanks) {
+                if (enemy.isAlive()) {
+                    enemy.draw(gc);
+                }
+            }
+
+            // 3. 绘制玩家坦克
+            if (player != null && player.isAlive()) {
+                player.draw(gc);
+            }
+
+            // 4. 绘制所有子弹
+            for (Bullet bullet : bullets) {
+                if (bullet.alive) {
+                    bullet.draw(gc);
+                }
+            }
+
+            // 5. 绘制地图前景（草地等）
+            if (map != null) {
+                spritePainter.drawMapForeground(gc, map);
+            }
+
+            // 6. 绘制HUD（游戏信息界面）
+            drawHUD(gc);
+
+            // 7. 绘制游戏状态信息（游戏结束、关卡完成等）
+            drawGameStateMessages(gc);
+
+        } catch (Exception e) {
+            System.err.println("❌ 渲染游戏画面异常: " + e.getMessage());
+            e.printStackTrace();
         }
-        // 计算敌方总血量/剩余血量
-        double totalHp = 0;
-        double remainHp = 0;
-        for (Tank enemy : enemies) {
-            totalHp += enemy.getMaxHealth();
-            remainHp += enemy.getHealth();
+    }
+
+    /**
+     * 绘制HUD（抬头显示）
+     */
+    private void drawHUD(GraphicsContext gc) {
+        if (gc == null) return;
+
+        try {
+            // 设置字体
+            gc.setFont(HUD_FONT_MEDIUM);
+
+            // 1. 绘制关卡信息（左上角）
+            gc.setFill(LEVEL_COLOR);
+            gc.fillText("第 " + currentLevel + " 关", 20, 30);
+
+            // 2. 绘制分数（左上角，关卡下方）
+            gc.setFill(SCORE_COLOR);
+            gc.fillText("分数: " + playerScore + " / " + targetScore, 20, 60);
+
+            // 3. 绘制游戏时间（右上角）
+            gc.setFill(TIME_COLOR);
+            String timeText = String.format("时间: %02d:%02d",
+                    gameElapsedTime / 60, gameElapsedTime % 60);
+            gc.fillText(timeText, WIDTH - 150, 30);
+
+            // 4. 绘制玩家血量（右上角，时间下方）
+            drawPlayerHealth(gc);
+
+            // 5. 绘制敌人数量（右上角）
+            gc.setFill(HUD_TEXT_COLOR);
+            gc.fillText("剩余敌人: " + enemyTanks.size(), WIDTH - 150, 90);
+
+        } catch (Exception e) {
+            System.err.println("❌ 绘制HUD异常: " + e.getMessage());
         }
-        String enemyText = String.format("敌方血量：%.0f/%.0f", remainHp, totalHp);
-        enemyHpLabel.setText(enemyText);
     }
 
     /**
-     * 格式化时间（秒→分:秒）
+     * 绘制玩家血量（用红心表示）
      */
-    private String formatTime(double seconds) {
-        int mins = (int) seconds / 60;
-        int secs = (int) seconds % 60;
-        return String.format("%02d:%02d", mins, secs);
+    private void drawPlayerHealth(GraphicsContext gc) {
+        if (gc == null) return;
+
+        try {
+            gc.setFill(HEALTH_COLOR);
+            gc.setFont(HUD_FONT_SMALL);
+            gc.fillText("血量: ", WIDTH - 150, 60);
+
+            // 绘制血量条或红心图标
+            int maxHealth = GameConfig.PLAYER_HEALTH;
+            int currentHealth = playerHealth;
+
+            // 方法1：绘制红心图标
+            double heartX = WIDTH - 80;
+            double heartY = 45;
+
+            for (int i = 0; i < maxHealth; i++) {
+                if (i < currentHealth) {
+                    // 绘制实心红心（存活的血量）
+                    gc.setFill(Color.RED);
+                    drawHeart(gc, heartX + i * 25, heartY, 10);
+                } else {
+                    // 绘制空心红心（失去的血量）
+                    gc.setStroke(Color.GRAY);
+                    gc.setLineWidth(1);
+                    drawHeartOutline(gc, heartX + i * 25, heartY, 10);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("❌ 绘制血量异常: " + e.getMessage());
+        }
     }
 
     /**
-     * 重置场景（释放资源）
+     * 绘制实心红心
      */
-    @Override
-    protected void resetScene() {
-        super.resetScene();
+    private void drawHeart(GraphicsContext gc, double x, double y, double size) {
+        gc.save();
+        gc.translate(x, y);
+
+        // 创建心形路径
+        gc.beginPath();
+        gc.moveTo(0, -size/2);
+        gc.bezierCurveTo(size/2, -size, size, 0, 0, size);
+        gc.bezierCurveTo(-size, 0, -size/2, -size, 0, -size/2);
+        gc.closePath();
+        gc.fill();
+
+        gc.restore();
+    }
+
+    /**
+     * 绘制空心红心
+     */
+    private void drawHeartOutline(GraphicsContext gc, double x, double y, double size) {
+        gc.save();
+        gc.translate(x, y);
+
+        // 创建心形路径
+        gc.beginPath();
+        gc.moveTo(0, -size/2);
+        gc.bezierCurveTo(size/2, -size, size, 0, 0, size);
+        gc.bezierCurveTo(-size, 0, -size/2, -size, 0, -size/2);
+        gc.closePath();
+        gc.stroke();
+
+        gc.restore();
+    }
+
+    /**
+     * 绘制游戏状态信息
+     */
+    private void drawGameStateMessages(GraphicsContext gc) {
+        if (gc == null) return;
+
+        try {
+            gc.setFont(HUD_FONT_LARGE);
+
+            if (isGameOver) {
+                // 游戏结束画面
+                gc.setFill(GAME_OVER_COLOR);
+                String gameOverText = "游戏结束";
+                double textWidth = getTextWidth(gc, gameOverText);
+                gc.fillText(gameOverText, (WIDTH - textWidth) / 2, HEIGHT / 2 - 30);
+
+                gc.setFont(HUD_FONT_MEDIUM);
+                gc.setFill(HUD_TEXT_COLOR);
+                String scoreText = "最终得分: " + playerScore;
+                double scoreWidth = getTextWidth(gc, scoreText);
+                gc.fillText(scoreText, (WIDTH - scoreWidth) / 2, HEIGHT / 2 + 20);
+
+                String timeText = "用时: " + gameElapsedTime + " 秒";
+                double timeWidth = getTextWidth(gc, timeText);
+                gc.fillText(timeText, (WIDTH - timeWidth) / 2, HEIGHT / 2 + 50);
+
+                String restartText = "按 R 重新开始，按 ESC 返回主菜单";
+                double restartWidth = getTextWidth(gc, restartText);
+                gc.fillText(restartText, (WIDTH - restartWidth) / 2, HEIGHT / 2 + 90);
+
+            } else if (isLevelComplete) {
+                // 关卡完成画面
+                gc.setFill(LEVEL_COMPLETE_COLOR);
+                String completeText = "第 " + currentLevel + " 关完成！";
+                double textWidth = getTextWidth(gc, completeText);
+                gc.fillText(completeText, (WIDTH - textWidth) / 2, HEIGHT / 2 - 30);
+
+                gc.setFont(HUD_FONT_MEDIUM);
+                gc.setFill(HUD_TEXT_COLOR);
+
+                String scoreText = "得分: " + playerScore + " / " + targetScore;
+                double scoreWidth = getTextWidth(gc, scoreText);
+                gc.fillText(scoreText, (WIDTH - scoreWidth) / 2, HEIGHT / 2 + 20);
+
+                if (currentLevel < 3) {
+                    String nextLevelText = "即将进入第 " + (currentLevel + 1) + " 关...";
+                    double nextWidth = getTextWidth(gc, nextLevelText);
+                    gc.fillText(nextLevelText, (WIDTH - nextWidth) / 2, HEIGHT / 2 + 60);
+                } else {
+                    String congratsText = "恭喜通关所有关卡！";
+                    double congratsWidth = getTextWidth(gc, congratsText);
+                    gc.fillText(congratsText, (WIDTH - congratsWidth) / 2, HEIGHT / 2 + 60);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("❌ 绘制游戏状态信息异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 计算文本宽度
+     */
+    private double getTextWidth(GraphicsContext gc, String text) {
+        try {
+            // 创建一个临时的Text对象来测量宽度
+            javafx.scene.text.Text tempText = new javafx.scene.text.Text(text);
+            tempText.setFont(gc.getFont());
+            return tempText.getLayoutBounds().getWidth();
+        } catch (Exception e) {
+            System.err.println("❌ 计算文本宽度异常: " + e.getMessage());
+            return text.length() * 10; // 粗略估计
+        }
+    }
+
+    // ========== 游戏控制方法 ==========
+
+    /**
+     * 重新开始游戏
+     */
+    public void restartGame() {
+        // 停止当前游戏循环
         if (gameLoop != null) {
             gameLoop.stop();
-            gameLoop = null;
         }
-        enemies.clear();
+
+        // 重置游戏状态
+        currentLevel = 1;
+        playerScore = 0;
+        isGameOver = false;
+        isLevelComplete = false;
+
+        // 清空对象列表
+        enemyTanks.clear();
         bullets.clear();
-        player = null;
-        map = null;
+
+        // 重新加载第一关
+        loadLevel(currentLevel);
+
+        // 重启游戏循环
+        startGameLoop();
+
+        System.out.println("🔄 游戏已重新开始");
     }
+
     /**
-     * 重置模式专属数据（核心实现）
-     * 子类必须实现的抽象方法
+     * 暂停游戏
      */
-    @Override
-    protected void resetModeSpecificData() {
-        // ========== 1. 重置数值型数据 ==========
-        // 游戏时长归零
-        this.elapsedTime = 0;
-        // （可选）如果是重新开始当前关卡，保留关卡数；如果是重新开始所有关卡，重置为1
-        // this.currentLevel = 1;
-
-        // ========== 2. 重置玩家状态 ==========
-        if (player != null) {
-            // 重置玩家坦克位置（回到出生点）
-            player.setX(WIDTH / 2 - 25);
-            player.setY(HEIGHT - 80);
-            // 重置坦克血量/状态
-            player.setAlive(true);
-            player.setHealth(100);
-
+    public void pauseGame() {
+        if (gameLoop != null) {
+            gameLoop.stop();
+            System.out.println("⏸️ 游戏已暂停");
         }
+    }
 
-        // ========== 3. 重置敌人数据 ==========
-        // 清空现有敌人坦克
-        for(Tank enemy:enemies){
-          //  enemy.clear();
+    /**
+     * 继续游戏
+     */
+    public void resumeGame() {
+        if (gameLoop != null) {
+            gameLoop.start();
+            System.out.println("▶️ 游戏继续");
         }
+    }
 
-        // （可选）重置敌人生成计数器/难度
-        // enemySpawnCount = 0;
+    // ========== Getter方法 ==========
 
-        // ========== 4. 重置玩家生命值（可选） ==========
-        // 如果是关卡失败重置，保留剩余生命值；如果是重新开始，重置为初始值
-        // this.playerLives = 3;
+    public int getCurrentLevel() {
+        return currentLevel;
+    }
 
-        // ========== 5. 重置地图相关（可选） ==========
-        // 重新加载地图（避免地图元素被破坏后残留）
-        //loadLevelMap(currentLevel);
+    public int getPlayerScore() {
+        return playerScore;
+    }
+
+    public int getPlayerHealth() {
+        return playerHealth;
+    }
+
+    public long getGameElapsedTime() {
+        return gameElapsedTime;
+    }
+
+    public boolean isGameOver() {
+        return isGameOver;
+    }
+
+    public boolean isLevelComplete() {
+        return isLevelComplete;
+    }
+
+    public List<Tank> getEnemyTanks() {
+        return enemyTanks;
+    }
+
+    public List<Bullet> getBullets() {
+        return bullets;
     }
 }

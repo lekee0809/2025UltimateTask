@@ -34,10 +34,10 @@ public class SpritePainter {
     /** 加载地形图片（增加异常处理，避免图片加载失败导致崩溃） */
     private void loadImages() {
         try {
-            floorImage = resourceManager.loadImage("images/Floor.png");
-            brickImage = resourceManager.loadImage("images/Brick.png");
-            stoneImage = resourceManager.loadImage("images/Wall.png");
-            waterImage = resourceManager.loadImage("images/River.png");
+            floorImage = resourceManager.loadImage("images/floor.png");
+            brickImage = resourceManager.loadImage("images/brick.png");
+            stoneImage = resourceManager.loadImage("images/stone.png");
+            waterImage = resourceManager.loadImage("images/river.png");
             grassImage = resourceManager.loadImage("images/grass.png");
             brokenBrickImage = resourceManager.loadImage("images/floor.png");
         } catch (Exception e) {

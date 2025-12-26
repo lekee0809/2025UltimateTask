@@ -3,7 +3,7 @@ package map;
 public final class LevelData {
 
     private LevelData() {}
-    // LEVEL 3 —— 教学关（30×22）
+    // LEVEL 3 —— 复杂关（30×22）
  public static final int[][] LEVEL_3 = {
             // 第0-1行：上边界，四角有2×2石墙
             {0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2},
@@ -61,7 +61,6 @@ public final class LevelData {
             {0,0,0,4,0,1,1,2,3,4,2,1,1,3,4,3,1,1,1,2,2,2,2,0,0,0,0,1,1,1}
     };
     /// 第一关：开始关卡（30×22）
-// 高难度关卡，包含复杂地形和最终防御
     public static final int[][] LEVEL_1 = {
             // 0:地板, 1:砖块(可破), 2:石块(不可破), 3:河流(不可过), 4:草地(遮挡)
 
