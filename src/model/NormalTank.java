@@ -32,7 +32,7 @@ public class NormalTank extends EnemyTank {
     @Override
     protected void loadImage() {
         try {
-            this.imagePath = GameConfig.IMAGE_PATH + "tank_yellow.png";
+            this.imagePath = "/images/tank_yellow.png.png";
             this.tankImage = new Image(this.imagePath);
             if (tankImage.isError()) {
                 System.err.println("普通坦克图片加载失败: " + imagePath);

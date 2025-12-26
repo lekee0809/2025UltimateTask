@@ -14,7 +14,7 @@ public class Bullet extends Entity {
     private double speedy;
 
     private int direction; // 子弹朝向（0-360度）
-    private int damage;    // 伤害值
+    public int damage;    // 伤害值
     public Boolean isEnemy; // true=敌方子弹, false=我方子弹
     private int bounceCount = 0; // 当前反弹次数记录
 
