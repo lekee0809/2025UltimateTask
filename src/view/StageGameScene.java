@@ -121,7 +121,7 @@ public class StageGameScene extends BaseGameScene {
         };
         player = new PlayerTank(playerX, 50);
         // 重置玩家血量（关卡切换后满血）
-        player.resetHp();
+        player.resetHealth();
 
         // 4. 初始化对应关卡敌人（难度递增）
         initEnemiesByLevel(level);
@@ -357,7 +357,7 @@ public class StageGameScene extends BaseGameScene {
         // 绘制子弹
         for (Bullet b : bullets) {
             if (b.isAlive()) {
-                spritePainter.drawBullet(bulletContext, b);
+                b.draw(bulletContext);
             }
         }
 
@@ -382,7 +382,7 @@ public class StageGameScene extends BaseGameScene {
             playerHpLabel.setText("玩家血量：0/0");
             return;
         }
-        String hpText = String.format("玩家血量：%.0f/%.0f", player.getCurrentHp(), player.getMaxHp());
+        String hpText = String.format("玩家血量：%.0f/%.0f", player.getHealth(), player.getMaxHealth());
         playerHpLabel.setText(hpText);
     }
 
@@ -405,8 +405,8 @@ public class StageGameScene extends BaseGameScene {
         double totalHp = 0;
         double remainHp = 0;
         for (Tank enemy : enemies) {
-            totalHp += enemy.getMaxHp();
-            remainHp += enemy.getCurrentHp();
+            totalHp += enemy.getMaxHealth();
+            remainHp += enemy.getHealth();
         }
         String enemyText = String.format("敌方血量：%.0f/%.0f", remainHp, totalHp);
         enemyHpLabel.setText(enemyText);
@@ -435,5 +435,45 @@ public class StageGameScene extends BaseGameScene {
         bullets.clear();
         player = null;
         map = null;
+    }
+    /**
+     * 重置模式专属数据（核心实现）
+     * 子类必须实现的抽象方法
+     */
+    @Override
+    protected void resetModeSpecificData() {
+        // ========== 1. 重置数值型数据 ==========
+        // 游戏时长归零
+        this.elapsedTime = 0;
+        // （可选）如果是重新开始当前关卡，保留关卡数；如果是重新开始所有关卡，重置为1
+        // this.currentLevel = 1;
+
+        // ========== 2. 重置玩家状态 ==========
+        if (player != null) {
+            // 重置玩家坦克位置（回到出生点）
+            player.setX(WIDTH / 2 - 25);
+            player.setY(HEIGHT - 80);
+            // 重置坦克血量/状态
+            player.setAlive(true);
+            player.setHealth(100);
+
+        }
+
+        // ========== 3. 重置敌人数据 ==========
+        // 清空现有敌人坦克
+        for(Tank enemy:enemies){
+          //  enemy.clear();
+        }
+
+        // （可选）重置敌人生成计数器/难度
+        // enemySpawnCount = 0;
+
+        // ========== 4. 重置玩家生命值（可选） ==========
+        // 如果是关卡失败重置，保留剩余生命值；如果是重新开始，重置为初始值
+        // this.playerLives = 3;
+
+        // ========== 5. 重置地图相关（可选） ==========
+        // 重新加载地图（避免地图元素被破坏后残留）
+        //loadLevelMap(currentLevel);
     }
 }
