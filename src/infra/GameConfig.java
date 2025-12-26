@@ -43,10 +43,18 @@ public class GameConfig {
     public static final int TILE_WATER = 3; // 水（坦克不可过，子弹可过）
     public static final int TILE_GRASS = 4; //草地（坦克可过，隐身，子弹可过）
 
+
+    // === 7. 游戏循环核心设置 (Game Loop) ===
+    // 类似于 CSGO 的 64-tick 或 128-tick，这里我们锁定逻辑帧率为 60
+    public static final int TARGET_FPS = 60;
+
+    // 每一帧逻辑应该消耗的纳秒数 (1秒 = 1,000,000,000 纳秒)
+    // 1_000_000_000 / 60 ≈ 16,666,666 ns
+    public static final long TIME_PER_FRAME = 1_000_000_000L / TARGET_FPS;
     // 在 GameConfig 类中添加：
     public static final int PLAYER_HEALTH = 100;
-    public static final int PLAYER_FIRE_COOLDOWN = 500; // 0.5秒一发
-    public static final int PLAYER_BULLET_DAMAGE = 20;
+    public static final int PLAYER_FIRE_COOLDOWN = 50; // 0.05秒一发
+    public static final int PLAYER_BULLET_DAMAGE = 10000;
 
     // === Enemy Stats (数值体系) ===
 

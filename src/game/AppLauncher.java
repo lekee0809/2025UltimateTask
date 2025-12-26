@@ -1,5 +1,6 @@
 package game;
 
+import infra.GameConfig;
 import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -65,8 +66,11 @@ public class AppLauncher extends Application {
         menuRoot.getChildren().addAll(title, btnStageMode, btnPvPMode, btnExit);
 
         // 初始窗口大小 (800x600 或根据你的 GameConfig)
-        Scene menuScene = new Scene(menuRoot, 1200, 880); // 确保足够大能容纳地图
 
+// ...
+
+// 使用 GameConfig 的常量，保持和游戏内画面大小一致
+        Scene menuScene = new Scene(menuRoot, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         primaryStage.setTitle("Tank War 2025");
         primaryStage.setScene(menuScene);
         primaryStage.show();

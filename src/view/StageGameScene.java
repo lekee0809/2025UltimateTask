@@ -47,10 +47,6 @@ public class StageGameScene extends BaseGameScene {
     private boolean isGameOver;            // 游戏结束标志
     private boolean isLevelComplete;       // 关卡完成标志
     private int targetScore;               // 当前关卡目标分数
-
-    // ========== 游戏计时器 ==========
-    private AnimationTimer gameLoop;       // 游戏主循环
-
     // ========== 随机数生成器 ==========
     private Random random;                 // 修复：延迟初始化
 
@@ -77,6 +73,11 @@ public class StageGameScene extends BaseGameScene {
     }
 
     @Override
+    protected void resetModeSpecificData() {
+        //
+    }
+
+    @Override
     protected void initModeSpecificLogic() {
         // 初始化随机数生成器（修复NullPointerException）
         random = new Random();
@@ -99,8 +100,6 @@ public class StageGameScene extends BaseGameScene {
             loadLevel(currentLevel);
 
             // 启动游戏主循环
-            startGameLoop();
-
             System.out.println("✅ 闯关模式初始化完成");
         } catch (Exception e) {
             System.err.println("❌ 闯关模式初始化失败: " + e.getMessage());
@@ -380,64 +379,95 @@ public class StageGameScene extends BaseGameScene {
         return x;
     }
 
-    // ========== 游戏主循环 ==========
-    private void startGameLoop() {
-        gameLoop = new AnimationTimer() {
-            @Override
-            public void handle(long now) {
-                try {
-                    // 计算游戏时间
-                    gameElapsedTime = (System.currentTimeMillis() - levelStartTime) / 1000;
-
-                    // 更新游戏逻辑
-                    updateGame();
-
-                    // 渲染游戏画面
-                    renderGame();
-
-                    // 检查游戏状态
-                    checkGameState();
-                } catch (Exception e) {
-                    System.err.println("❌ 游戏主循环异常: " + e.getMessage());
-                    e.printStackTrace();
-                    // 停止游戏循环防止崩溃
-                    stop();
-                }
-            }
-        };
-
-        gameLoop.start();
-        System.out.println("🎮 游戏主循环已启动");
-    }
 
     /**
      * 更新游戏逻辑
      */
-    private void updateGame() {
+    /**
+     * 这里是 60Hz 的物理逻辑更新
+     * 对应以前的 updateGame()
+     */
+    @Override
+    protected void updateGameLogic() {
+        // 1. 计算时间
+        gameElapsedTime = (System.currentTimeMillis() - levelStartTime) / 1000;
+
+        // 2. 检查游戏状态（结束就不更新了）
         if (isGameOver || isLevelComplete) {
-            return; // 游戏结束或关卡完成时不更新
+            return;
         }
 
         try {
-            // 1. 更新玩家坦克（根据输入）
+            // 直接调用你原本写的逻辑方法
             updatePlayerTank();
-
-            // 2. 更新敌人坦克（AI）
             updateEnemyTanks();
-
-            // 3. 更新所有子弹
             updateBullets();
-
-            // 4. 检查碰撞
             checkCollisions();
-
-            // 5. 清理已销毁的对象
             cleanupObjects();
+
+            // 检查过关
+            checkGameState();
+
         } catch (Exception e) {
-            System.err.println("❌ 游戏更新异常: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
+    /**
+     * 这里是 渲染逻辑
+     * 对应以前的 renderGame()
+     */
+    @Override
+    protected void renderGameFrame() {
+        // 【注意】不需要再写 gc.fillRect(Color.BLACK) 了，父类已经帮你清空了！
+
+        // 我们需要分别获取不同层的画笔
+        // 你的 BaseGameScene 提供了 mapGc, tankGc, bulletGc
+
+        try {
+            // 1. 绘制地图底层 (画在 mapGc 上)
+            if (map != null) {
+                spritePainter.drawMapBackground(mapGc, map);
+            }
+
+            // 2. 绘制坦克 (画在 tankGc 上)
+            // 敌人
+            for (Tank enemy : enemyTanks) {
+                if (enemy.isAlive()) {
+                    // 确保 Tank 类的 draw 方法支持传入 GraphicsContext
+                    // 或者使用 spritePainter.drawTank(tankGc, enemy);
+                    enemy.draw(tankGc);
+                }
+            }
+            // 玩家
+            if (player != null && player.isAlive()) {
+                player.draw(tankGc);
+            }
+
+            // 3. 绘制子弹 (画在 bulletGc 上)
+            for (Bullet bullet : bullets) {
+                if (bullet.alive) {
+                    bullet.draw(bulletGc);
+                }
+            }
+
+            // 4. 绘制地图前景 (草丛) (画在 tankGc 或 bulletGc 上均可，看遮挡关系)
+            if (map != null) {
+                spritePainter.drawMapForeground(tankGc, map);
+            }
+
+            // 5. 绘制 HUD (建议画在 bulletGc 上，或者你再加一个 uiCanvas)
+            // 这里暂时画在最顶层的 bulletGc 上，确保文字在最上面
+            drawHUD(bulletGc);
+            drawGameStateMessages(bulletGc);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ... 此时你可以把旧的 updateGame() 和 renderGame() 方法删掉了 ...
+    // ... restartGame, pauseGame 方法里对 gameLoop 的调用也要改 ...
 
     /**
      * 更新玩家坦克
@@ -658,64 +688,6 @@ public class StageGameScene extends BaseGameScene {
         // returnToMainMenu();
     }
 
-    // ========== 渲染系统 ==========
-    /**
-     * 渲染游戏画面
-     */
-    private void renderGame() {
-        GraphicsContext gc = mapGc;
-
-        if (gc == null) {
-            System.err.println("❌ 画布上下文为空！");
-            return;
-        }
-
-        try {
-            // 清空画布（黑色背景）
-            gc.setFill(Color.BLACK);
-            gc.fillRect(0, 0, WIDTH, HEIGHT);
-
-            // 1. 绘制地图背景（地板、砖墙、石头、水）
-            if (map != null) {
-                spritePainter.drawMapBackground(gc, map);
-            }
-
-            // 2. 绘制敌人坦克
-            for (Tank enemy : enemyTanks) {
-                if (enemy.isAlive()) {
-                    enemy.draw(gc);
-                }
-            }
-
-            // 3. 绘制玩家坦克
-            if (player != null && player.isAlive()) {
-                player.draw(gc);
-            }
-
-            // 4. 绘制所有子弹
-            for (Bullet bullet : bullets) {
-                if (bullet.alive) {
-                    bullet.draw(gc);
-                }
-            }
-
-            // 5. 绘制地图前景（草地等）
-            if (map != null) {
-                spritePainter.drawMapForeground(gc, map);
-            }
-
-            // 6. 绘制HUD（游戏信息界面）
-            drawHUD(gc);
-
-            // 7. 绘制游戏状态信息（游戏结束、关卡完成等）
-            drawGameStateMessages(gc);
-
-        } catch (Exception e) {
-            System.err.println("❌ 渲染游戏画面异常: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
     /**
      * 绘制HUD（抬头显示）
      */
@@ -900,51 +872,32 @@ public class StageGameScene extends BaseGameScene {
 
     // ========== 游戏控制方法 ==========
 
-    /**
-     * 重新开始游戏
-     */
     public void restartGame() {
-        // 停止当前游戏循环
-        if (gameLoop != null) {
-            gameLoop.stop();
+        // 父类也有 gameLoop 对象，调用它的 stop
+        if (super.gameLoop != null) {
+            super.gameLoop.stop();
         }
 
-        // 重置游戏状态
-        currentLevel = 1;
-        playerScore = 0;
-        isGameOver = false;
-        isLevelComplete = false;
+        // ... 重置变量逻辑不变 ...
 
-        // 清空对象列表
-        enemyTanks.clear();
-        bullets.clear();
-
-        // 重新加载第一关
         loadLevel(currentLevel);
 
-        // 重启游戏循环
-        startGameLoop();
-
+        // 父类循环重新开始
+        if (super.gameLoop != null) {
+            super.gameLoop.start();
+        }
         System.out.println("🔄 游戏已重新开始");
     }
 
-    /**
-     * 暂停游戏
-     */
     public void pauseGame() {
-        if (gameLoop != null) {
-            gameLoop.stop();
-            System.out.println("⏸️ 游戏已暂停");
+        if (super.gameLoop != null) {
+            super.gameLoop.stop();
         }
     }
 
-    /**
-     * 继续游戏
-     */
     public void resumeGame() {
-        if (gameLoop != null) {
-            gameLoop.start();
-            System.out.println("▶️ 游戏继续");
+        if (super.gameLoop != null) {
+            super.gameLoop.start();
         }
     }
 

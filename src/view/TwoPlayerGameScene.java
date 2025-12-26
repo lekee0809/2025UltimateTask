@@ -142,4 +142,6 @@ public class TwoPlayerGameScene extends BaseGameScene {
     @Override
     protected void resetModeSpecificData() {
     }
+    protected void updateGameLogic(){}
+    protected void renderGameFrame(){}
 }
