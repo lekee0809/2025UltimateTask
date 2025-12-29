@@ -1,10 +1,13 @@
 package model;
-
 import infra.GameConfig;
 import javafx.scene.image.Image;
 
 public class PlayerTank extends Tank {
-
+    // ===================== 状态变量 =====================
+    private boolean invincible = false;       // 是否处于无敌状态
+    private long invincibleEndTime = 0;       // 无敌状态结束时间
+    private boolean missileMode = false;      // 是否处于导弹模式
+    private long missileModeEndTime = 0;      // 导弹模式结束时间
     public PlayerTank(double x, double y) {
         super(x, y,
                 TankType.PLAYER_GREEN,
@@ -70,5 +73,14 @@ public class PlayerTank extends Tank {
     @Override
     public String getColorDescription() {
         return "绿色玩家坦克";
+    }
+    public int getMaxHealth() {
+        return GameConfig.PLAYER_HEALTH;
+    }
+
+    public void activateInvincibility(int duration) {
+        this.invincible = true;
+        this.invincibleEndTime = System.currentTimeMillis() + duration;
+        System.out.println("🛡️ 激活无敌状态，持续 " + (duration/1000) + " 秒");
     }
 }
