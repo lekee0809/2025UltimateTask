@@ -1,28 +1,21 @@
 package map;
+
+import infra.GameConfig; // ✅ 核心修改：统一使用 GameConfig，不再使用 MapConstants
 import model.Tile;
 import model.TileType;
+
 /**
- * 地图模型类（纯数据 + 规则）
- *
- * 职责：
- * 1. 维护 Tile 二维数组
- * 2. 根据像素坐标 / 格子坐标提供地形判断
- * 3. 处理子弹与地形的交互规则
- * 4. 提供草丛隐身判定
- *
- * 不负责：
- * - 渲染
- * - 坦克 / 子弹实体
- * - 道具系统（后续再加）
+ * 地图模型类（兼容 闯关模式 + 无尽模式）
  */
 public class MapModel {
 
     public static final int LEVEL_1 = 1;
     public static final int LEVEL_2 = 2;
     public static final int LEVEL_3 = 3;
-    /** 地图行列 */
-    private final int rows = MapConstants.MAP_ROWS;
-    private final int cols = MapConstants.MAP_COLS;
+
+    // ✅ 修改点：统一使用 GameConfig 的尺寸，确保和工厂生成的地图大小一致
+    private final int rows = GameConfig.MAP_ROWS;
+    private final int cols = GameConfig.MAP_COLS;
 
     /** 地图格子 */
     private final Tile[][] tiles;
@@ -30,18 +23,37 @@ public class MapModel {
     /** 是否为闯关模式（影响草丛隐身） */
     private boolean campaignMode = true;
 
+    // ==========================================
+    // 构造函数 (兼容两种模式)
+    // ==========================================
+
+    /** * 构造函数 1：闯关模式专用
+     * 读取 LevelData 静态数据
+     */
     public MapModel(int level) {
         tiles = new Tile[rows][cols];
-        loadLevel(level);
+        loadLevel(level); // ✅ 保留你原有的加载逻辑
     }
 
-    /* ===================== 关卡加载 ===================== */
+    /** * 构造函数 2：无尽模式专用
+     * 接收 MapFactory 生成的动态数据
+     */
+    public MapModel(int[][] data) {
+        tiles = new Tile[rows][cols];
+        // 直接使用传入的 data 填充
+        initFromData(data);
+    }
 
+    // ==========================================
+    // 关卡加载逻辑 (保持不变)
+    // ==========================================
+
+    /** 从 LevelData 加载 (闯关模式) */
     private void loadLevel(int level) {
         int[][] data;
-
         switch (level) {
             case 2:
+                // 请确保 LevelData 类存在且可访问
                 data = LevelData.LEVEL_2;
                 break;
             case 3:
@@ -50,21 +62,27 @@ public class MapModel {
             default:
                 data = LevelData.LEVEL_1;
         }
+        initFromData(data);
+    }
 
+    /** 通用填充逻辑 (提取出来避免重复) */
+    private void initFromData(int[][] data) {
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 TileType type = TileType.EMPTY;
 
-                if (r < data.length && c < data[r].length) {
+                // 安全检查
+                if (data != null && r < data.length && c < data[r].length) {
                     type = TileType.fromCode(data[r][c]);
                 }
-
                 tiles[r][c] = new Tile(r, c, type);
             }
         }
     }
 
-    /* ===================== Tile 获取 ===================== */
+    // ==========================================
+    // Tile 获取 (修正像素计算)
+    // ==========================================
 
     public Tile getTile(int row, int col) {
         if (row < 0 || col < 0 || row >= rows || col >= cols) {
@@ -74,75 +92,56 @@ public class MapModel {
     }
 
     public Tile getTileByPixel(double x, double y) {
-        int col = (int) (x / MapConstants.TILE_SIZE);
-        int row = (int) (y / MapConstants.TILE_SIZE);
+        // ✅ 修改点：必须除以 GameConfig.GRID_SIZE (40.0)
+        // 如果用 MapConstants.TILE_SIZE (可能是34.0)，坐标判断会错乱
+        int col = (int) (x / GameConfig.GRID_SIZE);
+        int row = (int) (y / GameConfig.GRID_SIZE);
         return getTile(row, col);
     }
 
-    /* ===================== 坦克规则 ===================== */
+    // ==========================================
+    // 坦克与子弹规则 (保持不变)
+    // ==========================================
 
     public boolean canTankMove(double x, double y) {
         Tile tile = getTileByPixel(x, y);
         if (tile == null) return false;
-
         return tile.canTankPass();
     }
 
     public boolean isTankHidden(double x, double y) {
         if (!campaignMode) return false;
-
         Tile tile = getTileByPixel(x, y);
         return tile != null && tile.getType().isHideTank();
     }
 
-    /* ===================== 子弹规则 ===================== */
-
-    /**
-     * @return true  子弹应销毁
-     *         false 子弹继续飞行（或反弹）
-     */
     public boolean handleBullet(double x, double y) {
         Tile tile = getTileByPixel(x, y);
         if (tile == null) return true;
 
-        // 子弹可穿透
-        if (tile.canBulletPass()) {
-            return false;
-        }
+        if (tile.canBulletPass()) return false;
+        if (tile.shouldBulletReflect()) return false;
 
-        // 子弹反弹（具体反弹方向由 Bullet 决定）
-        if (tile.shouldBulletReflect()) {
-            return false;
-        }
-
-        // 可破坏砖墙
         if (tile.getType() == TileType.BRICK && !tile.isDestroyed()) {
             tile.destroy();
             return true;
         }
-
-        // 其他情况：子弹消失
         return true;
     }
-    /**地图重置（用于重新开始本关）*/
+
+    // ==========================================
+    // 控制接口
+    // ==========================================
+
     public void reset(int level) {
         loadLevel(level);
     }
-    /* ===================== 控制接口 ===================== */
 
     public void setCampaignMode(boolean campaignMode) {
         this.campaignMode = campaignMode;
     }
 
-    public int getRows() {
-        return rows;
-    }
-
-    public int getCols() {
-        return cols;
-    }
-
-    public Tile[][] getTiles() {
-        return tiles;
-    }
+    public int getRows() { return rows; }
+    public int getCols() { return cols; }
+    public Tile[][] getTiles() { return tiles; }
 }
