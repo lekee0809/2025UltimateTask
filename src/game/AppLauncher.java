@@ -12,15 +12,16 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import view.StageGameScene;
 import view.TwoPlayerGameScene;
+import view.EndlessGameScene; // 【新增】记得导入你的无尽模式场景类
 
 public class AppLauncher extends Application {
 
     @Override
     public void start(Stage primaryStage) {
         // 1. 创建主菜单布局
-        VBox menuRoot = new VBox(20); // 垂直布局，间距20
+        VBox menuRoot = new VBox(20);
         menuRoot.setAlignment(Pos.CENTER);
-        menuRoot.setStyle("-fx-background-color: #2c3e50;"); // 深色背景
+        menuRoot.setStyle("-fx-background-color: #2c3e50;");
 
         // 2. 标题
         Label title = new Label("FaZe LeKee's TANK WAR");
@@ -29,25 +30,36 @@ public class AppLauncher extends Application {
 
         // 3. 按钮：闯关模式
         Button btnStageMode = createMenuButton("闯关模式 (Stage Mode)");
-
-        // 【核心修复】绑定点击事件 -> 切换到 StageGameScene
         btnStageMode.setOnAction(e -> {
             try {
                 System.out.println("正在进入闯关模式...");
-                // 创建闯关场景
                 StageGameScene stageScene = new StageGameScene(primaryStage);
-                // 获取构建好的 Scene 并设置给舞台
                 primaryStage.setScene(stageScene.getScene());
             } catch (Exception ex) {
-                ex.printStackTrace(); // 如果报错，打印在控制台
-                System.err.println("进入闯关模式失败，请检查 MapModel 或 图片资源！");
+                ex.printStackTrace();
             }
         });
 
+        // ================= 【新增开始】 =================
+        // 3.5 按钮：无尽模式
+        Button btnEndlessMode = createMenuButton("无尽模式 (Endless Mode)");
+
+        btnEndlessMode.setOnAction(e -> {
+            try {
+                System.out.println("正在进入无尽模式...");
+                // 这里需要你创建一个 EndlessGameScene 类
+                // 如果还没有写好，可以先暂时用 StageGameScene 代替测试
+                EndlessGameScene endlessScene = new EndlessGameScene(primaryStage);
+                primaryStage.setScene(endlessScene.getScene());
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                System.err.println("进入无尽模式失败，请检查 EndlessGameScene 类是否存在！");
+            }
+        });
+        // ================= 【新增结束】 =================
+
         // 4. 按钮：双人对战
         Button btnPvPMode = createMenuButton("双人对战 (2 Players)");
-
-        // 【核心修复】绑定点击事件 -> 切换到 TwoPlayerGameScene
         btnPvPMode.setOnAction(e -> {
             try {
                 System.out.println("正在进入双人模式...");
@@ -62,33 +74,25 @@ public class AppLauncher extends Application {
         Button btnExit = createMenuButton("退出游戏 (Exit)");
         btnExit.setOnAction(e -> System.exit(0));
 
-        // 6. 组装并显示
-        menuRoot.getChildren().addAll(title, btnStageMode, btnPvPMode, btnExit);
+        // 6. 组装并显示 (注意把 btnEndlessMode 加进去)
+        menuRoot.getChildren().addAll(title, btnStageMode, btnEndlessMode, btnPvPMode, btnExit);
 
-        // 初始窗口大小 (800x600 或根据你的 GameConfig)
-
-// ...
-
-// 使用 GameConfig 的常量，保持和游戏内画面大小一致
         Scene menuScene = new Scene(menuRoot, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         primaryStage.setTitle("Tank War 2025");
         primaryStage.setScene(menuScene);
         primaryStage.show();
     }
 
-    // 辅助方法：统一按钮样式
     private Button createMenuButton(String text) {
         Button btn = new Button(text);
         btn.setPrefSize(300, 60);
         btn.setFont(new Font("Consolas", 18));
-        // 简单的样式
         btn.setStyle(
                 "-fx-background-color: #ecf0f1; " +
                         "-fx-text-fill: #2c3e50; " +
                         "-fx-font-weight: bold; " +
                         "-fx-background-radius: 10;"
         );
-        // 鼠标悬停变色效果
         btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #bdc3c7; -fx-background-radius: 10;"));
         btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #ecf0f1; -fx-background-radius: 10;"));
         return btn;
