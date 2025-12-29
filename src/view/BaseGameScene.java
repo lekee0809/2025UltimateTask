@@ -64,10 +64,11 @@ public abstract class BaseGameScene {
         initCommonUI();
         // 3. 初始化输入监听
         initCommonInput();
-        // 4. 初始化模式专属逻辑
-        initModeSpecificLogic();
         // 5. 创建并绑定场景
         createScene();
+        // 4. 初始化模式专属逻辑
+        initModeSpecificLogic();
+
         // 6. 启动游戏主循环
         startGameLoop(); // <--- 新增这行
 
@@ -275,5 +276,20 @@ public abstract class BaseGameScene {
 
     public double getHEIGHT() {
         return HEIGHT;
+    }
+    // ========== 新增：暂停游戏方法（父类通用实现，移除无效super调用） ==========
+    protected void pauseGameProcess() {
+        if (gameLoop != null) {
+            gameLoop.stop(); // 停止游戏循环
+        }
+        SoundManager.getInstance().pauseBGM(); // 暂停背景音乐
+    }
+
+    // ========== 新增：恢复游戏方法（父类通用实现，移除无效super调用，调整gameOver逻辑） ==========
+    protected void resumeGameProcess() {
+        if (gameLoop != null) {
+            gameLoop.start(); // 启动游戏循环（子类可根据gameOver重写控制）
+        }
+        SoundManager.getInstance().playBGM(); // 恢复背景音乐
     }
 }
