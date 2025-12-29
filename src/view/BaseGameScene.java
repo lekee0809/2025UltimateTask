@@ -7,6 +7,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.StackPane;
 import javafx.scene.Scene;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -292,4 +293,5 @@ public abstract class BaseGameScene {
         }
         SoundManager.getInstance().playBGM(); // 恢复背景音乐
     }
+
 }
