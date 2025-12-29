@@ -1,6 +1,7 @@
 package view;
 
 import infra.GameConfig;
+import map.MapFactory; // ✅ 1. 引入工厂
 import map.MapModel;
 import model.*;
 import model.Tank.TankType;
@@ -93,10 +94,22 @@ public class EndlessGameScene extends BaseGameScene {
         System.out.println("\n=== 第 " + wave + " 波开始 ===");
         System.out.println("目标: 消灭 " + targetKills + " 个敌人");
 
-        // 1. 生成全新随机地图
-        mapModel = new MapModel(wave);
-        map = mapModel.getTiles();
+        // 1. 让工厂生产一张新图 (int[][])
+        int[][] randomMapData = MapFactory.getMap(wave);
 
+        // 2. 把这张新图塞给 MapModel (这里调用的是接收数组的构造函数)
+        mapModel = new MapModel(randomMapData);
+
+        // 3. 把转换好的格子给渲染层
+        this.map = mapModel.getTiles();
+        // ==========================================
+
+        // 🛠️ 调试代码：如果屏幕还是黑的，请看控制台有没有这句话
+        if (map != null && map[0][0] != null) {
+            System.out.println("✅ 地图已加载到 Scene, [0][0]类型: " + map[0][0].getType());
+        } else {
+            System.err.println("❌ 严重错误: map 变量为空！");
+        }
         // 2. 清空当前子弹和敌人
         bullets.clear();
         enemyTanks.clear();
@@ -114,38 +127,81 @@ public class EndlessGameScene extends BaseGameScene {
     }
 
     private void initializePlayer() {
-        // 尝试在地图下方寻找安全出生点
-        double startX = GameConfig.SCREEN_WIDTH / 2 - 20;
-        double startY = GameConfig.SCREEN_HEIGHT - 100;
-
-        // 使用通用的安全位置查找逻辑
-        if (!isPositionSafe(startX, startY)) {
-            // 如果预设点不行，随机找一个
-            startX = findSafeSpawnPoint(true);
-            startY = GameConfig.SCREEN_HEIGHT - 100; // Y轴尽量靠下
-        }
+        // 设定左上角为默认出生点 (1,1 格子)
+        // 注意：使用 GRID_SIZE 确保对齐
+        double startX = GameConfig.GRID_SIZE * 1;
+        double startY = GameConfig.GRID_SIZE * 1;
 
         if (player == null) {
             player = new PlayerTank(startX, startY);
             player.setHealth(GameConfig.PLAYER_HEALTH);
         } else {
-            // 后续波次：继承血量，但给予奖励回复
             player.setX(startX);
             player.setY(startY);
-            player.stopAllMovement(); // 停止移动
-
-            // 过关回血 30%
+            player.stopAllMovement();
             int heal = (int)(GameConfig.PLAYER_HEALTH * 0.3);
             player.heal(heal);
         }
 
-        // 确保玩家重置后是存活状态
         if (!player.isAlive()) {
             player.setHealth(GameConfig.PLAYER_HEALTH);
-            player.setAlive(true); // 确保 Entity 状态也是活的
+            player.setAlive(true);
         }
+
+        // ==========================================
+        // ⭐ 暴力修复：出生点强制拆迁
+        // 不管地图生成器有没有清理干净，这里再清理一次，确保万无一失
+        // ==========================================
+        forceClearArea(startX, startY);
     }
 
+    /**
+     * 强制清理指定像素坐标周围的障碍物
+     * 确保坦克出生时绝对不会卡在墙里
+     */
+    private void forceClearArea(double x, double y) {
+        if (mapModel == null) return;
+
+        // 坦克的尺寸
+        double size = GameConfig.TANK_SIZE;
+        // 稍微扩大一点清理范围，防止边缘摩擦
+        double margin = 5.0;
+
+        // 计算坦克占据的左上角和右下角所在的格子行列
+        int startCol = (int)((x - margin) / GameConfig.GRID_SIZE);
+        int endCol = (int)((x + size + margin) / GameConfig.GRID_SIZE);
+        int startRow = (int)((y - margin) / GameConfig.GRID_SIZE);
+        int endRow = (int)((y + size + margin) / GameConfig.GRID_SIZE);
+
+        // 遍历这些格子，全部设为空地
+        for (int r = startRow; r <= endRow; r++) {
+            for (int c = startCol; c <= endCol; c++) {
+                // 边界检查
+                if (r >= 0 && r < GameConfig.MAP_ROWS && c >= 0 && c < GameConfig.MAP_COLS) {
+                    Tile t = mapModel.getTile(r, c);
+                    if (t != null && !t.getType().isTankPassable()) {
+                        // 发现障碍物！强制销毁！
+                        // 注意：这里需要 MapModel 支持修改，或者直接修改 Tile 对象
+                        // 如果 Tile 对象有 setType 方法最好，如果没有，可以用 destroy()
+
+                        // 方案 A: 如果是砖块，直接 destroy
+                        if (t.getType() == TileType.BRICK) {
+                            t.destroy();
+                        }
+                        // 方案 B: 如果是铁墙/水，我们需要更底层的修改 (假设 Tile 有 setDestroyed 或我们重新生成一个空 Tile)
+                        else {
+                            // 简单粗暴：直接覆盖一个新的空 Tile
+                            // 这需要 map 数组是 public 或者有 setTile 方法，
+                            // 这里演示直接修改 mapModel 内部引用的方式 (如果 map 是直接引用的)
+                            if (map != null) {
+                                map[r][c] = new Tile(r, c, TileType.EMPTY);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     // ========== 2. 游戏循环 (Update) ==========
 
     @Override
