@@ -1,5 +1,7 @@
 package view;
-
+import item.Item;
+import item.ItemType;
+import javafx.scene.image.Image;
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
@@ -16,9 +18,7 @@ import map.EnemySpawn;
 import model.*;
 import model.Tank.TankType;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 /**
  * 闯关模式游戏场景类
@@ -37,6 +37,9 @@ public class StageGameScene extends BaseGameScene {
     private List<Bullet> bullets;          // 子弹列表
     private MapModel mapModel;             // 地图模型
     private Tile[][] map;                  // 地图瓦片数组
+    private List<Item> items;                    // 道具列表
+    private Map<ItemType, Image> itemImages;     // 道具图片缓存
+
 
     // ========== 游戏状态变量 ==========
     private int currentLevel;              // 当前关卡编号（1-3）
@@ -92,6 +95,9 @@ public class StageGameScene extends BaseGameScene {
         // 初始化对象列表
         enemyTanks = new ArrayList<>();
         bullets = new ArrayList<>();
+        items = new ArrayList<>();
+        itemImages = new HashMap<>();
+        loadItemImages();
 
         System.out.println("🚀 开始初始化闯关模式...");
 
@@ -108,7 +114,19 @@ public class StageGameScene extends BaseGameScene {
             returnToMainMenu();
         }
     }
-
+    // ========== 添加加载道具图片的方法 ==========
+    private void loadItemImages() {
+        try {
+            ResourceManager rm = ResourceManager.getInstance();
+            for (ItemType type : ItemType.values()) {
+                Image img = rm.loadImage(type.getImagePath());
+                itemImages.put(type, img);
+            }
+            System.out.println("✅ 道具图片加载完成");
+        } catch (Exception e) {
+            System.err.println("❌ 道具图片加载失败: " + e.getMessage());
+        }
+    }
 
     // ========== 返回主菜单方法 ==========
     private void returnToMainMenu() {
@@ -433,6 +451,8 @@ public class StageGameScene extends BaseGameScene {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        updateItems();
+
     }
 
     /**
@@ -477,6 +497,9 @@ public class StageGameScene extends BaseGameScene {
             if (map != null) {
                 spritePainter.drawMapForeground(tankGc, map);
             }
+            // 绘制道具
+            drawItems(tankGc); // 可以画在tank层或bullet层，看你想让道具被什么遮挡
+
 
             // 5. 绘制 HUD (建议画在 bulletGc 上，或者你再加一个 uiCanvas)
             // 这里暂时画在最顶层的 bulletGc 上，确保文字在最上面
@@ -487,6 +510,87 @@ public class StageGameScene extends BaseGameScene {
             e.printStackTrace();
         }
     }
+    // ========== 添加 drawItems 方法 ==========
+    private void drawItems(GraphicsContext gc) {
+        for (Item item : items) {
+            drawSingleItem(gc, item);
+        }
+    }
+
+    private void drawSingleItem(GraphicsContext gc, Item item) {
+        if (!item.isActive() || !item.isVisible()) return;
+
+        // 保存画布状态
+        gc.save();
+
+        // 设置透明度
+        gc.setGlobalAlpha(item.getAlpha());
+
+        // 计算绘制位置和大小（支持缩放动画）
+        double x = item.getX();
+        double y = item.getY();
+        double width = item.getWidth();
+        double height = item.getHeight();
+
+        // 应用缩放
+        double scale = item.getScale();
+        double scaledWidth = width * scale;
+        double scaledHeight = height * scale;
+        double offsetX = (width - scaledWidth) / 2;
+        double offsetY = (height - scaledHeight) / 2;
+
+        // 绘制道具
+        Image itemImage = itemImages.get(item.getType());
+        if (itemImage != null) {
+            // 使用缓存的图片
+            gc.drawImage(itemImage, x + offsetX, y + offsetY, scaledWidth, scaledHeight);
+        } else {
+            // 图片加载失败，使用颜色和文字代替
+            drawItemFallback(gc, x + offsetX, y + offsetY, scaledWidth, scaledHeight, item.getType());
+        }
+
+        // 恢复画布状态
+        gc.restore();
+    }
+
+    private void drawItemFallback(GraphicsContext gc, double x, double y, double w, double h, ItemType type) {
+        // 根据道具类型设置不同颜色
+        Color color;
+        String text;
+
+        switch (type) {
+            case HEAL:
+                color = Color.RED;
+                text = "血";
+                break;
+            case INVINCIBLE:
+                color = Color.GOLD;
+                text = "盾";
+                break;
+            case BOMB:
+                color = Color.DARKRED;
+                text = "爆";
+                break;
+            default:
+                color = Color.GRAY;
+                text = "?";
+        }
+
+        // 绘制背景
+        gc.setFill(color);
+        gc.fillRoundRect(x, y, w, h, 10, 10);
+
+        // 绘制边框
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(2);
+        gc.strokeRoundRect(x, y, w, h, 10, 10);
+
+        // 绘制文字
+        gc.setFill(Color.WHITE);
+        gc.setFont(javafx.scene.text.Font.font("Arial Bold", 16));
+        gc.fillText(text, x + w/2 - 8, y + h/2 + 6);
+    }
+
 
     // ... 此时你可以把旧的 updateGame() 和 renderGame() 方法删掉了 ...
     // ... restartGame, pauseGame 方法里对 gameLoop 的调用也要改 ...
@@ -712,9 +816,95 @@ public class StageGameScene extends BaseGameScene {
                         playerScore += enemy.getScoreValue();
                         System.out.println("🎯 击毁敌人！得分: " + enemy.getScoreValue() +
                                 "，总分: " + playerScore);
+                        spawnItemOnEnemyDeath(enemy);
                     }
                     break;
                 }
+            }
+        }
+    }
+    /**
+     * 【修正】敌人死亡时概率掉落道具
+     */
+    private void spawnItemOnEnemyDeath(Tank enemy) {
+        // 根据敌人类型确定掉落概率
+        double dropProbability;
+
+        if (enemy instanceof NormalTank) {
+            dropProbability = 0.40; // 普通坦克40%掉落
+        } else if (enemy instanceof FastTank) {
+            dropProbability = 0.50; // 快速坦克50%掉落
+        } else if (enemy instanceof HeavyTank) {
+            dropProbability = 0.70; // 重型坦克70%掉落
+        } else {
+            dropProbability = 0.30; // 默认30%
+        }
+
+        // 随机决定是否掉落道具
+        double dropRoll = random.nextDouble();
+        if (dropRoll < dropProbability) {
+            // 在敌人死亡位置生成道具
+            double itemX = enemy.getCenterX() - GameConfig.GRID_SIZE / 2;
+            double itemY = enemy.getCenterY() - GameConfig.GRID_SIZE / 2;
+
+            // 确定道具类型（回血40%，无敌50%，导弹10%）
+            double itemRoll = random.nextDouble();
+            Item item;
+
+            if (itemRoll < 0.40) {  // 0-0.4：回血道具（40%）
+                item = new Item(itemX, itemY, ItemType.HEAL);
+            } else if (itemRoll < 0.90) {  // 0.4-0.9：无敌道具（50%）
+                item = new Item(itemX, itemY, ItemType.INVINCIBLE);
+            } else {  // 0.9-1.0：导弹道具（10%）
+                item = new Item(itemX, itemY, ItemType.BOMB);
+            }
+
+            items.add(item);
+
+            System.out.println(String.format("🎁 敌人掉落%s道具 (掉落概率%.0f%%, 类型概率%.0f%%)",
+                    item.getType().getName(), dropProbability*100,
+                    (item.getType() == ItemType.HEAL ? 40 :
+                            item.getType() == ItemType.INVINCIBLE ? 50 : 10)));
+        } else {
+            // 不掉落道具，可以在这里添加调试信息
+            System.out.println("❌ 敌人死亡但未掉落道具 (概率: " + (int)(dropProbability*100) + "%)");
+        }
+    }
+    // ========== 添加 updateItems 方法 ==========
+    private void updateItems() {
+        // 更新道具动画
+        for (int i = items.size() - 1; i >= 0; i--) {
+            Item item = items.get(i);
+            item.updateAnimation();
+
+            // 移除过期的道具
+            if (!item.isActive()) {
+                items.remove(i);
+                continue;
+            }
+
+            // 检查与玩家的碰撞
+            if (player != null && player.isAlive() && item.checkCollision(player)) {
+                // 根据道具类型处理效果
+                if (item.getType() == ItemType.BOMB) {
+                    // 炸弹效果：全图敌人扣50血
+                    item.applyBombEffect(enemyTanks);
+
+                    // 重新检查是否有敌人死亡并增加分数
+                    for (int j = enemyTanks.size() - 1; j >= 0; j--) {
+                        Tank enemy = enemyTanks.get(j);
+                        if (!enemy.isAlive()) {
+                            playerScore += enemy.getScoreValue();
+                            System.out.println("💣 炸弹击杀敌人，得分: " + enemy.getScoreValue());
+                        }
+                    }
+                } else {
+                    // 回血或无敌效果
+                    item.applyEffect(player);
+                }
+
+                // 移除已被拾取的道具
+                items.remove(i);
             }
         }
     }
@@ -740,6 +930,8 @@ public class StageGameScene extends BaseGameScene {
 
         // 清理无效子弹
         bullets.removeIf(bullet -> !bullet.alive);
+        // 清理过期的道具
+        items.removeIf(item -> !item.isActive());
     }
 
     /**
@@ -1038,6 +1230,9 @@ public class StageGameScene extends BaseGameScene {
             super.gameLoop.start();
         }
     }
+
+
+
 
     // ========== Getter方法 ==========
 
