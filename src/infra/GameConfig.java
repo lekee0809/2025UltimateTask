@@ -1,8 +1,7 @@
 package infra;
-
 /**
  * 坦克大战全局配置文件
- * 由指挥官 Lekee 统一定义，确保全队逻辑对齐
+ * 统一定义，确保全队逻辑对齐
  */
 public class GameConfig {
 

@@ -39,6 +39,7 @@ public abstract class EnemyTank extends Tank {
     // 巡逻目标点
     protected double patrolTargetX = 0;
     protected double patrolTargetY = 0;
+    private Bullet pendingBullet;
 
     // ========== 构造函数 ==========
     public EnemyTank(double x, double y, TankType type,
@@ -68,6 +69,7 @@ public abstract class EnemyTank extends Tank {
             return;
         }
 
+
         // 保存目标玩家
         this.targetPlayer = playerTank;
 
@@ -92,6 +94,12 @@ public abstract class EnemyTank extends Tank {
 
         // 执行当前状态的行为
         executeAIState(map, deltaTime);
+    }
+
+    public Bullet consumePendingBullet() {
+        Bullet b = pendingBullet;
+        pendingBullet = null; // 取走后清空
+        return b;
     }
 
     /**
@@ -178,48 +186,74 @@ public abstract class EnemyTank extends Tank {
         }
     }
 
+    /**
+     * 【修复2：AI 移动逻辑整合】
+     * 在追逐时也加入防撞判断，防止卡死
+     */
+// ... (在 EnemyTank 类中)
+
+    /**
+     * 【修复：追逐模式】
+     * 以前只追不打，现在允许“边跑边打”
+     */
     protected void executeChase(Tile[][] map) {
         if (targetPlayer == null) return;
 
-        // 转向玩家
         double angleToPlayer = calculateAngleToPlayer();
         rotateTowardsAngle(angleToPlayer);
 
-        // 向玩家移动
-        setMovingForward(true);
+        if (!isPathBlocked(map, 45)) {
+            setMovingForward(true);
+        } else {
+            setMovingForward(false);
+            changeState(AIState.PATROL);
+            return;
+        }
 
-        // 接近时减速
-        double distance = getDistanceToPlayer();
-        if (distance < attackRange * 0.8) {
-            if (distance < attackRange * 0.5) {
-                setMovingForward(false);
+        double angleDiff = getAngleDifference(angleToPlayer);
+
+        // 【核心修改点】
+        if (Math.abs(angleDiff) < 35 && random.nextDouble() < 0.03) {
+            // 这里不能光调用 tryFire()，必须把生成的子弹存起来！
+            Bullet b = tryFire();
+            if (b != null) {
+                this.pendingBullet = b; // 存入暂存区
             }
+        }
+
+        if (getDistanceToPlayer() < attackRange * 0.8) {
+            changeState(AIState.ATTACK);
         }
     }
 
+    // 4. 修改 executeAttack (攻击)
     protected void executeAttack(Tile[][] map) {
         if (targetPlayer == null) return;
 
         double angleToPlayer = calculateAngleToPlayer();
-        double angleDiff = getAngleDifference(angleToPlayer);
-
-        // 精确瞄准
         rotateTowardsAngle(angleToPlayer);
 
-        // 符合条件时开火
-        if (Math.abs(angleDiff) < attackAngleThreshold) {
-            tryFire(); // 调用继承自Tank的开火方法
+        double angleDiff = getAngleDifference(angleToPlayer);
+
+        // 【核心修改点】
+        if (Math.abs(angleDiff) < 30) {
+            // 同样，把生成的子弹存起来
+            Bullet b = tryFire();
+            if (b != null) {
+                this.pendingBullet = b; // 存入暂存区
+            }
         }
 
-        // 保持距离
         double distance = getDistanceToPlayer();
-        if (distance < attackRange * 0.6) {
+        if (distance < attackRange * 0.5) {
             setMovingBackward(true);
         } else if (distance > attackRange * 0.9) {
-            setMovingForward(true);
+            if (!isPathBlocked(map, 40)) setMovingForward(true);
+        } else {
+            setMovingForward(false);
+            setMovingBackward(false);
         }
     }
-
     protected void executeRetreat(Tile[][] map) {
         if (targetPlayer == null) return;
 
@@ -261,27 +295,28 @@ public abstract class EnemyTank extends Tank {
     /**
      * 转向目标角度
      */
+// 找到 rotateTowardsAngle 方法，修改里面的左右判断
+
     protected void rotateTowardsAngle(double targetAngle) {
         double currentAngle = getDisplayRotation();
         double angleDiff = normalizeAngle180(targetAngle - currentAngle);
 
         if (Math.abs(angleDiff) > 5) {
             if (angleDiff > 0) {
-                // 需要向左转
-                setRotatingLeft(true);
-                setRotatingRight(false);
-            } else {
-                // 需要向右转
+                // JavaFX 中，角度增加是顺时针（向右转）
+                // 原代码这里写的是 Left，请改为 Right
                 setRotatingRight(true);
                 setRotatingLeft(false);
+            } else {
+                // 角度减少是逆时针（向左转）
+                setRotatingLeft(true);
+                setRotatingRight(false);
             }
         } else {
-            // 角度足够接近，停止旋转
             setRotatingLeft(false);
             setRotatingRight(false);
         }
     }
-
     /**
      * 角度归一化到-180到180度
      */
@@ -375,6 +410,35 @@ public abstract class EnemyTank extends Tank {
                 }
                 break;
         }
+    }
+    /**
+     * 【修复1：防撞墙逻辑】
+     * 使用 GameConfig.GRID_SIZE 准确计算前方是否有障碍
+     */
+    private boolean isPathBlocked(Tile[][] map, double checkDistance) {
+        // 1. 计算探测点坐标 (坦克中心前方 checkDistance 像素处)
+        double rad = Math.toRadians(getDisplayRotation());
+        double probeX = getCenterX() + Math.sin(rad) * checkDistance;
+        double probeY = getCenterY() - Math.cos(rad) * checkDistance;
+
+        // 2. 将像素坐标转换为地图数组下标 (直接用配置的 40.0)
+        int col = (int) (probeX / GameConfig.GRID_SIZE);
+        int row = (int) (probeY / GameConfig.GRID_SIZE);
+
+        // 3. 边界检查 (防止数组越界报错)
+        if (row < 0 || row >= map.length || col < 0 || col >= map[0].length) {
+            return true; // 撞到地图边缘了，视为墙壁
+        }
+
+        // 4. 地形检查
+        Tile tile = map[row][col];
+        if (tile != null) {
+            // 利用 TileType.isTankPassable() 判断
+            // 遇到 墙(BRICK)、石(STONE)、水(WATER) 返回 true (表示被阻挡)
+            return !tile.getType().isTankPassable();
+        }
+
+        return false;
     }
 
     // ========== 抽象方法（子类实现） ==========
