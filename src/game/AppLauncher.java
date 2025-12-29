@@ -10,6 +10,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import view.SoundManager;
 import view.StageGameScene;
 import view.TwoPlayerGameScene;
 import view.EndlessGameScene; // 【新增】记得导入你的无尽模式场景类
@@ -81,6 +82,8 @@ public class AppLauncher extends Application {
         primaryStage.setTitle("Tank War 2025");
         primaryStage.setScene(menuScene);
         primaryStage.show();
+        // 新增：主菜单启动时播放背景音乐
+        SoundManager.getInstance().playBackgroundMusic(); // 或 playBGM()
     }
 
     private Button createMenuButton(String text) {
