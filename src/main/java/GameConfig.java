@@ -28,7 +28,7 @@ public class GameConfig {
     // 分辨率调大后速度提升至 8.0，保证手感不迟钝
     public static final double BULLET_SPEED = 8.0;
     // 满足你要求的 3 次反弹逻辑
-    public static final int MAX_BULLET_BOUNCES = 3;
+    public static final int MAX_BULLET_BOUNCES = 30;
 
     // === 5. 资源路径 (UI 组参考) ===
     // 统一资源根路径，彻底解决你遇到的 NullPointerException 问题
