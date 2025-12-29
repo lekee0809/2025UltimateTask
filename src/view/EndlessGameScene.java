@@ -260,34 +260,76 @@ public class EndlessGameScene extends BaseGameScene {
     }
 
     private void spawnEnemy() {
-        // 随机在地图上半部分找一个安全点
-        double x = findSafeSpawnPoint(false);
-        double y = 50 + random.nextDouble() * 300;
+        // 1. 核心修复：不再随机像素坐标，而是随机 "格子索引"
+        // 这样保证坦克永远在格子的正中间，不会一半在墙里一半在外面
+        int gridX = random.nextInt(GameConfig.MAP_COLS);
+        int gridY = random.nextInt(GameConfig.MAP_ROWS / 2); // 敌人通常在地图上半部分生成
 
-        // 确保出生点没撞墙
-        if (!isPositionSafe(x, y)) return;
+        // 2. 尝试找一个原本就是空的地方 (尝试 10 次)
+        for (int i = 0; i < 10; i++) {
+            int testC = random.nextInt(GameConfig.MAP_COLS);
+            int testR = random.nextInt(GameConfig.MAP_ROWS / 2);
+            // 检查这个格子本身以及右边、下边的格子是否安全
+            if (isAreaClear(testR, testC)) {
+                gridX = testC;
+                gridY = testR;
+                break;
+            }
+        }
 
-        // 根据波次决定敌人类型
+        // 3. 计算实际像素坐标 (严格对齐网格左上角)
+        double spawnX = gridX * GameConfig.GRID_SIZE;
+        double spawnY = gridY * GameConfig.GRID_SIZE;
+
+        // ==========================================
+        // ⭐ 关键：不管刚才找的位置是不是空的，
+        // 既然决定在这里出生，就强制把这里挖空！
+        // ==========================================
+        forceClearArea(spawnX, spawnY);
+
+        // 4. 生成坦克实体
         TankType type = TankType.ENEMY_NORMAL;
         double roll = random.nextDouble();
-
         // 难度公式
-        double heavyChance = Math.min(0.4, currentWave * 0.05); // 每波增加 5% 重坦率
-        double fastChance = Math.min(0.3, currentWave * 0.03);  // 每波增加 3% 快坦率
+        double heavyChance = Math.min(0.4, currentWave * 0.05);
+        double fastChance = Math.min(0.3, currentWave * 0.03);
 
         if (roll < heavyChance) type = TankType.ENEMY_HEAVY;
         else if (roll < heavyChance + fastChance) type = TankType.ENEMY_FAST;
 
         Tank enemy;
         switch (type) {
-            case ENEMY_HEAVY: enemy = new HeavyTank(x, y); break;
-            case ENEMY_FAST: enemy = new FastTank(x, y); break;
-            default: enemy = new NormalTank(x, y); break;
+            case ENEMY_HEAVY: enemy = new HeavyTank(spawnX, spawnY); break;
+            case ENEMY_FAST: enemy = new FastTank(spawnX, spawnY); break;
+            default: enemy = new NormalTank(spawnX, spawnY); break;
         }
 
         enemyTanks.add(enemy);
     }
+    /**
+     * 检查以 (row, col) 为左上角的 2x2 格子区域是否为空
+     * (因为坦克大小接近 40px，可能会稍微蹭到右边或下边的格子，保险起见查 2x2)
+     */
+    private boolean isAreaClear(int row, int col) {
+        if (mapModel == null) return false;
 
+        // 检查 2x2 区域
+        for (int r = row; r <= row + 1; r++) {
+            for (int c = col; c <= col + 1; c++) {
+                // 越界检查
+                if (r < 0 || r >= GameConfig.MAP_ROWS || c < 0 || c >= GameConfig.MAP_COLS) {
+                    continue; // 忽略越界
+                }
+
+                Tile t = mapModel.getTile(r, c);
+                // 如果有障碍物，返回 false
+                if (t != null && !t.getType().isTankPassable()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
     // ========== 3. 更新与碰撞 (复用逻辑) ==========
 
     private void updatePlayer() {
