@@ -134,7 +134,26 @@ public class ItemSpawner {
         activeItems.clear();
         collectedItems.clear();
     }
+// 在 ItemSpawner 类中添加方法：
 
+    /**
+     * 手动添加道具到场景中
+     * @param x 道具X坐标
+     * @param y 道具Y坐标
+     * @param type 道具类型（可为null，null则随机生成）
+     */
+    public void spawnItemAt(double x, double y, ItemType type) {
+        Item item;
+        if (type == null) {
+            item = Item.createRandomItem(x, y);
+        } else {
+            item = new Item(x, y, type);
+        }
+        activeItems.add(item);
+
+        System.out.println("生成道具: " + item.getType().getName() +
+                " 在位置 (" + x + ", " + y + ")");
+    }
     /**
      * 获取道具数量统计信息
      * @return 包含各种道具数量的字符串
