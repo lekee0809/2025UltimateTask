@@ -36,7 +36,7 @@ public class MapModel {
     }
 
     /** * 构造函数 2：无尽模式专用
-     * 接收 MapFactory 生成的动态数据
+     * 接收 MapFactory_Backup 生成的动态数据
      */
     public MapModel(int[][] data) {
         tiles = new Tile[rows][cols];

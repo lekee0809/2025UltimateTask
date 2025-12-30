@@ -1,7 +1,7 @@
 package view;
 
 import infra.GameConfig;
-import map.MapFactory; // ✅ 1. 引入工厂
+import map.MapFactory_Backup; // ✅ 1. 引入工厂
 import map.MapModel;
 import model.*;
 import model.Tank.TankType;
@@ -95,7 +95,7 @@ public class EndlessGameScene extends BaseGameScene {
         System.out.println("目标: 消灭 " + targetKills + " 个敌人");
 
         // 1. 让工厂生产一张新图 (int[][])
-        int[][] randomMapData = MapFactory.getMap(wave);
+        int[][] randomMapData = MapFactory_Backup.getMap(wave);
 
         // 2. 把这张新图塞给 MapModel (这里调用的是接收数组的构造函数)
         mapModel = new MapModel(randomMapData);
