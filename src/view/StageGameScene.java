@@ -1,13 +1,11 @@
 package view;
 
-import javafx.animation.AnimationTimer;
+import item.Item;
+import item.ItemType;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import infra.GameConfig;
 
-import javafx.animation.AnimationTimer;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import map.MapModel;
@@ -74,7 +72,22 @@ public class StageGameScene extends BaseGameScene {
 
     @Override
     protected void resetModeSpecificData() {
-        //
+        // 重置时清空道具
+        itemSpawner.clear();
+        particleEffects.clear();
+
+        // 重置游戏状态
+        playerScore = 0;
+        playerHealth = GameConfig.PLAYER_HEALTH;
+        isGameOver = false;
+        isLevelComplete = false;
+        enemyTanks.clear();
+        bullets.clear();
+    }
+
+    @Override
+    protected PlayerTank getPlayerTank() {
+        return player;
     }
 
     @Override
@@ -152,8 +165,10 @@ public class StageGameScene extends BaseGameScene {
             System.out.println("🤖 生成敌人坦克...");
             generateEnemyTanks(level);
 
-            // 4. 清空子弹
+            // 4. 清空子弹和道具
             bullets.clear();
+            itemSpawner.clear();
+            particleEffects.clear();
 
             System.out.println("✅ 第 " + level + " 关加载完成！");
             System.out.println("   目标分数: " + targetScore);
@@ -420,6 +435,9 @@ public class StageGameScene extends BaseGameScene {
         }
 
         try {
+            // 1. 先调用父类更新道具逻辑
+            super.updateBaseElements();
+
             // 直接调用你原本写的逻辑方法
             updatePlayerTank();
             updateEnemyTanks();
@@ -433,6 +451,17 @@ public class StageGameScene extends BaseGameScene {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        // 1. 调用父类通用道具逻辑
+        super.updateBaseElements();
+
+        // 2. 检测敌人死亡掉落道具
+        enemyTanks.removeIf(e -> {
+            if (!e.isAlive()) {
+                itemSpawner.onEnemyDestroyed((EnemyTank) e); // 触发掉落逻辑
+                return true;
+            }
+            return false;
+        });
     }
 
     /**
@@ -477,8 +506,12 @@ public class StageGameScene extends BaseGameScene {
             if (map != null) {
                 spritePainter.drawMapForeground(tankGc, map);
             }
+// 调用父类绘制道具和粒子
+            super.renderBaseElements();
+            // 5. 绘制道具和粒子特效 (调用父类方法)
+            super.renderBaseElements();
 
-            // 5. 绘制 HUD (建议画在 bulletGc 上，或者你再加一个 uiCanvas)
+            // 6. 绘制 HUD (建议画在 bulletGc 上，或者你再加一个 uiCanvas)
             // 这里暂时画在最顶层的 bulletGc 上，确保文字在最上面
             drawHUD(bulletGc);
             drawGameStateMessages(bulletGc);
@@ -712,6 +745,10 @@ public class StageGameScene extends BaseGameScene {
                         playerScore += enemy.getScoreValue();
                         System.out.println("🎯 击毁敌人！得分: " + enemy.getScoreValue() +
                                 "，总分: " + playerScore);
+                        // 【新增】触发道具掉落
+                        if (enemy instanceof EnemyTank) {
+                            itemSpawner.onEnemyDestroyed((EnemyTank) enemy);
+                        }
                     }
                     break;
                 }
@@ -719,6 +756,41 @@ public class StageGameScene extends BaseGameScene {
         }
     }
 
+    @Override
+    protected void handleBombEffect(Item item) {
+        if (item.getType() != ItemType.BOMB) return;
+
+        System.out.println("💣 炸弹爆炸！对全图敌人造成50点伤害");
+
+        // 创建临时列表收集被炸死的敌人（用于触发道具掉落）
+        List<EnemyTank> killedEnemies = new ArrayList<>();
+
+        // 对当前所有敌人造成伤害
+        for (Tank enemy : enemyTanks) {
+            if (enemy.isAlive()) {
+                enemy.takeDamage(50);
+                System.out.println("  敌方坦克受到炸弹伤害，剩余血量: " + enemy.getHealth());
+
+                // 检查是否被炸死
+                if (!enemy.isAlive()) {
+                    if (enemy instanceof EnemyTank) {
+                        killedEnemies.add((EnemyTank) enemy);
+                    }
+                    // 增加分数
+                    playerScore += enemy.getScoreValue();
+                    System.out.println("  炸弹击杀敌人，得分: " + enemy.getScoreValue());
+                }
+            }
+        }
+
+        // 触发被炸死敌人的道具掉落
+        for (EnemyTank killedEnemy : killedEnemies) {
+            itemSpawner.onEnemyDestroyed(killedEnemy);
+        }
+
+        // 移除死亡的敌人
+        enemyTanks.removeIf(e -> !e.isAlive());
+    }
     /**
      * 检查两个实体是否碰撞
      */
