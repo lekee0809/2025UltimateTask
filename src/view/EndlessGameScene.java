@@ -166,6 +166,7 @@ public class EndlessGameScene extends BaseGameScene {
             player.setHealth(GameConfig.PLAYER_HEALTH);
             player.setAlive(true);
         }
+        player.activateShield(3.0);
     }
     /**
      * 强制清理指定像素坐标周围的障碍物
@@ -317,47 +318,47 @@ public class EndlessGameScene extends BaseGameScene {
      * @param isPlayer true=只在地图下方找; false=全图(或上半区)找
      * @return int[]{row, col} 或者 null (没找到)
      */
+// 修改 findFreeGridTile 方法
+// 修改 findFreeGridTile 方法
     private int[] findFreeGridTile(boolean isPlayer) {
         if (mapModel == null) return new int[]{1, 1};
 
         int maxAttempts = 100;
-        // 定义左上角“基地/安全区”的大小 (比如 6x6)
-        // 这个区域只允许玩家出生，敌人禁止进入
-        int safeZoneSize = 6;
+        // 设定最小安全距离（比如 10 个格子，防止贴脸）
+        double minSafeDistance = 10.0 * GameConfig.GRID_SIZE;
 
         for (int i = 0; i < maxAttempts; i++) {
-            int c, r;
+            int c = random.nextInt(GameConfig.MAP_COLS);
+            int r = random.nextInt(GameConfig.MAP_ROWS);
 
+            // 1. 如果是生成玩家，强制限制在左上角 (比如 6x6 区域)
             if (isPlayer) {
-                // 【玩家】：限制在左上角安全区内
-                c = random.nextInt(safeZoneSize);
-                r = random.nextInt(safeZoneSize);
-            } else {
-                // 【敌人】：全图随机，但要剔除左上角
-                c = random.nextInt(GameConfig.MAP_COLS);
-                r = random.nextInt(GameConfig.MAP_ROWS);
+                c = random.nextInt(6);
+                r = random.nextInt(6);
+            }
+            // 2. 如果是生成敌人，必须远离玩家
+            else if (player != null && player.isAlive()) {
+                double dx = (c * GameConfig.GRID_SIZE) - player.getX();
+                double dy = (r * GameConfig.GRID_SIZE) - player.getY();
+                double dist = Math.sqrt(dx*dx + dy*dy);
 
-                // 关键逻辑：如果敌人随机到了左上角安全区，直接跳过本次循环，重新随
-                if (c < safeZoneSize && r < safeZoneSize) {
+                // 如果离玩家太近，或者随机到了左上角老家，直接重来
+                if (dist < minSafeDistance || (c < 6 && r < 6)) {
                     continue;
                 }
             }
 
-            // 越界保护
+            // 3. 基础检查：越界、是否是墙、是否重叠
             if (r < 0 || r >= GameConfig.MAP_ROWS || c < 0 || c >= GameConfig.MAP_COLS) continue;
-
-            // 地形检查
             Tile t = mapModel.getTile(r, c);
 
-            // 只要是空地或草地就可以
+            // 只要是空地或草地
             if (t != null && (t.getType() == TileType.EMPTY || t.getType() == TileType.GRASS)) {
-                // 检查是否重叠
                 if (!isPositionOccupiedByTank(c, r)) {
-                    return new int[]{r, c};
+                    return new int[]{r, c}; // 找到完美位置
                 }
             }
         }
-
         return null;
     }
     /**
@@ -424,7 +425,7 @@ public class EndlessGameScene extends BaseGameScene {
             player.setRotatingRight(inputHandler.isDPressed());
 
             if (inputHandler.isJPressed()) {
-                Bullet b = player.tryFire();
+                Bullet b = player.tryFire(map);
                 if (b != null) bullets.add(b);
             }
             player.update(map);

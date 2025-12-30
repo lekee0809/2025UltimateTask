@@ -540,7 +540,7 @@ public class StageGameScene extends BaseGameScene {
 
         // 处理射击（J键）
         if (inputHandler.isJPressed()) {
-            Bullet bullet = player.tryFire();
+            Bullet bullet = player.tryFire(map);
             if (bullet != null) {
                 bullets.add(bullet);
                 // System.out.println("🔫 玩家发射子弹");

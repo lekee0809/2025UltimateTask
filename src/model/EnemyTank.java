@@ -215,7 +215,7 @@ public abstract class EnemyTank extends Tank {
         // 【核心修改点】
         if (Math.abs(angleDiff) < 35 && random.nextDouble() < 0.03) {
             // 这里不能光调用 tryFire()，必须把生成的子弹存起来！
-            Bullet b = tryFire();
+            Bullet b = tryFire(map);
             if (b != null) {
                 this.pendingBullet = b; // 存入暂存区
             }
@@ -238,7 +238,7 @@ public abstract class EnemyTank extends Tank {
         // 【核心修改点】
         if (Math.abs(angleDiff) < 30) {
             // 同样，把生成的子弹存起来
-            Bullet b = tryFire();
+            Bullet b = tryFire(map);
             if (b != null) {
                 this.pendingBullet = b; // 存入暂存区
             }

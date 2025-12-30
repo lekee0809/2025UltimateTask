@@ -26,7 +26,7 @@ public class GameConfig {
     // === 4. 子弹参数 (你负责的核心模块) ===
     public static final double BULLET_RADIUS = 3.0;
     // 分辨率调大后速度提升至 8.0，保证手感不迟钝
-    public static final double BULLET_SPEED = 8.0;
+    public static final double BULLET_SPEED = 6.0;
     // 满足你要求的 3 次反弹逻辑
     public static final int MAX_BULLET_BOUNCES = 3;
 
@@ -52,8 +52,8 @@ public class GameConfig {
     public static final long TIME_PER_FRAME = 1_000_000_000L / TARGET_FPS;
     // 在 GameConfig 类中添加：
     public static final int PLAYER_HEALTH = 100;
-    public static final int PLAYER_FIRE_COOLDOWN = 50; // 0.05秒一发
-    public static final int PLAYER_BULLET_DAMAGE = 10000;
+    public static final int PLAYER_FIRE_COOLDOWN =200; // 0.05秒一发
+    public static final int PLAYER_BULLET_DAMAGE = 100;
 
     // === Enemy Stats (数值体系) ===
 
