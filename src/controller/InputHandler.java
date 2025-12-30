@@ -5,6 +5,7 @@ import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import view.BaseGameScene;
+import view.SettingsWindow;
 
 import java.util.HashMap;
 import java.util.HashSet;

@@ -9,6 +9,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -25,6 +26,10 @@ import java.util.List;
 import java.util.Optional;
 
 public class TwoPlayerGameScene extends BaseGameScene {
+
+    // ======== 新增：SettingsWindow 成员变量 ========
+    private SettingsWindow settingsWindow;
+
     private Tank player1;
     private Tank player2;
     private final double PLAYER1_BIRTH_X = 80;
@@ -56,6 +61,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
         super(primaryStage); // 此时mapTileView已通过构造代码块初始化，非null
         initScene();
         // 新增：首次进入双人模式时，播放背景音乐
+        settingsWindow = new SettingsWindow(primaryStage);
         SoundManager.getInstance().playGameMusic();
     }
 
@@ -180,7 +186,6 @@ public class TwoPlayerGameScene extends BaseGameScene {
             } else if (result.get() == backToMainBtn) {
                 // 1. 停止游戏背景音乐，避免与主菜单音频冲突
                 SoundManager.getInstance().stopGameMusic();
-                // 播放主菜单背景音
                 SoundManager.getInstance().playBackgroundMusic();
                 // 2. 核心修改：重新初始化 AppLauncher 主菜单
                 AppLauncher mainMenu = new AppLauncher();
@@ -220,6 +225,16 @@ public class TwoPlayerGameScene extends BaseGameScene {
 
         scene.setOnKeyPressed(e -> {
             if (gameOver) return;
+
+            // 新增：ESC 键触发暂停
+            if (e.getCode() == KeyCode.ESCAPE) {
+                if (!GameConfig.isGamePaused()) { // 未暂停时才触发
+                    this.pauseGameProcess();
+                    settingsWindow.show(); // 显示设置窗口
+                }
+                return; // 避免和其他按键冲突
+            }
+
             switch (e.getCode()) {
                 case W: if (player1.isAlive()) player1.setMovingForward(true); break;
                 case S: if (player1.isAlive()) player1.setMovingBackward(true); break;

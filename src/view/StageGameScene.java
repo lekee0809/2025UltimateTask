@@ -1,8 +1,5 @@
 package view;
-import item.Item;
-import item.ItemSpawner;
-import item.ItemType;
-import javafx.scene.image.Image;
+
 import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
@@ -19,7 +16,9 @@ import map.EnemySpawn;
 import model.*;
 import model.Tank.TankType;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * 闯关模式游戏场景类
@@ -38,9 +37,6 @@ public class StageGameScene extends BaseGameScene {
     private List<Bullet> bullets;          // 子弹列表
     private MapModel mapModel;             // 地图模型
     private Tile[][] map;                  // 地图瓦片数组
-    private ItemSpawner itemSpawner;
-    private Map<ItemType, Image> itemImages;     // 道具图片缓存
-
 
     // ========== 游戏状态变量 ==========
     private int currentLevel;              // 当前关卡编号（1-3）
@@ -96,11 +92,6 @@ public class StageGameScene extends BaseGameScene {
         // 初始化对象列表
         enemyTanks = new ArrayList<>();
         bullets = new ArrayList<>();
-        itemImages = new HashMap<>();
-        loadItemImages();
-        //道具初始化
-        itemSpawner = new ItemSpawner();
-
 
         System.out.println("🚀 开始初始化闯关模式...");
 
@@ -117,19 +108,7 @@ public class StageGameScene extends BaseGameScene {
             returnToMainMenu();
         }
     }
-    // ========== 添加加载道具图片的方法 ==========
-    private void loadItemImages() {
-        try {
-            ResourceManager rm = ResourceManager.getInstance();
-            for (ItemType type : ItemType.values()) {
-                Image img = rm.loadImage(type.getImagePath());
-                itemImages.put(type, img);
-            }
-            System.out.println("✅ 道具图片加载完成");
-        } catch (Exception e) {
-            System.err.println("❌ 道具图片加载失败: " + e.getMessage());
-        }
-    }
+
 
     // ========== 返回主菜单方法 ==========
     private void returnToMainMenu() {
@@ -154,8 +133,6 @@ public class StageGameScene extends BaseGameScene {
         isLevelComplete = false;
         levelStartTime = System.currentTimeMillis();
         gameElapsedTime = 0;
-        itemSpawner.clear();
-
 
         // 获取当前关卡的目标分数
         targetScore = GameLevelConfig.getTargetScore(level);
@@ -456,89 +433,7 @@ public class StageGameScene extends BaseGameScene {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        itemSpawner.update(player,enemyTanks);
-
     }
-    private void drawItems(GraphicsContext gc) {
-        for (Item item : itemSpawner.getActiveItems()) {
-            drawSingleItem(gc, item);
-        }
-    }
-    private void drawSingleItem(GraphicsContext gc, Item item) {
-        if (!item.isActive() || !item.isVisible()) return;
-
-        // 保存画布状态
-        gc.save();
-
-        // 设置透明度
-        gc.setGlobalAlpha(item.getAlpha());
-
-        // 计算绘制位置和大小（支持缩放动画）
-        double x = item.getX();
-        double y = item.getY();
-        double width = item.getWidth();
-        double height = item.getHeight();
-
-        // 应用缩放
-        double scale = item.getScale();
-        double scaledWidth = width * scale;
-        double scaledHeight = height * scale;
-        double offsetX = (width - scaledWidth) / 2;
-        double offsetY = (height - scaledHeight) / 2;
-
-        // 绘制道具
-        Image itemImage = itemImages.get(item.getType());
-        if (itemImage != null) {
-            // 使用缓存的图片
-            gc.drawImage(itemImage, x + offsetX, y + offsetY, scaledWidth, scaledHeight);
-        } else {
-            // 图片加载失败，使用颜色和文字代替
-            drawItemFallback(gc, x + offsetX, y + offsetY, scaledWidth, scaledHeight, item.getType());
-        }
-
-        // 恢复画布状态
-        gc.restore();
-    }
-
-    private void drawItemFallback(GraphicsContext gc, double x, double y, double w, double h, ItemType type) {
-        // 根据道具类型设置不同颜色
-        Color color;
-        String text;
-
-        switch (type) {
-            case HEAL:
-                color = Color.RED;
-                text = "血";
-                break;
-            case INVINCIBLE:
-                color = Color.GOLD;
-                text = "盾";
-                break;
-            case BOMB:
-                color = Color.DARKRED;
-                text = "爆";
-                break;
-            default:
-                color = Color.GRAY;
-                text = "?";
-        }
-
-        // 绘制背景
-        gc.setFill(color);
-        gc.fillRoundRect(x, y, w, h, 10, 10);
-
-        // 绘制边框
-        gc.setStroke(Color.WHITE);
-        gc.setLineWidth(2);
-        gc.strokeRoundRect(x, y, w, h, 10, 10);
-
-        // 绘制文字
-        gc.setFill(Color.WHITE);
-        gc.setFont(javafx.scene.text.Font.font("Arial Bold", 16));
-        gc.fillText(text, x + w/2 - 8, y + h/2 + 6);
-    }
-
-
 
     /**
      * 这里是 渲染逻辑
@@ -583,7 +478,6 @@ public class StageGameScene extends BaseGameScene {
                 spritePainter.drawMapForeground(tankGc, map);
             }
 
-
             // 5. 绘制 HUD (建议画在 bulletGc 上，或者你再加一个 uiCanvas)
             // 这里暂时画在最顶层的 bulletGc 上，确保文字在最上面
             drawHUD(bulletGc);
@@ -593,6 +487,7 @@ public class StageGameScene extends BaseGameScene {
             e.printStackTrace();
         }
     }
+
     // ... 此时你可以把旧的 updateGame() 和 renderGame() 方法删掉了 ...
     // ... restartGame, pauseGame 方法里对 gameLoop 的调用也要改 ...
 
@@ -817,16 +712,12 @@ public class StageGameScene extends BaseGameScene {
                         playerScore += enemy.getScoreValue();
                         System.out.println("🎯 击毁敌人！得分: " + enemy.getScoreValue() +
                                 "，总分: " + playerScore);
-                        if (enemy instanceof EnemyTank) {
-                            itemSpawner.onEnemyDestroyed((EnemyTank) enemy);
-                        }
                     }
                     break;
                 }
             }
         }
     }
-
 
     /**
      * 检查两个实体是否碰撞
@@ -1147,9 +1038,6 @@ public class StageGameScene extends BaseGameScene {
             super.gameLoop.start();
         }
     }
-
-
-
 
     // ========== Getter方法 ==========
 

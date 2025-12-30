@@ -1,7 +1,5 @@
 package map;
 
-import java.util.Random;
-
 /**
  * 地图工厂类
  * 负责根据当前关卡数 (Level) 决定生成哪种类型的地图

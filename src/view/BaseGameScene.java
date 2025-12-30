@@ -1,5 +1,6 @@
 package view;
 
+import view.SoundManager;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
@@ -7,7 +8,6 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.StackPane;
 import javafx.scene.Scene;
-import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -19,6 +19,7 @@ import model.Bullet;
 import model.Tank;
 import controller.InputHandler;
 import infra.GameLoop;
+import infra.GameConfig; // 新增导入
 
 import static infra.GameConfig.SCREEN_WIDTH;
 import static infra.GameConfig.SCREEN_HEIGHT;
@@ -65,11 +66,10 @@ public abstract class BaseGameScene {
         initCommonUI();
         // 3. 初始化输入监听
         initCommonInput();
-        // 5. 创建并绑定场景
-        createScene();
         // 4. 初始化模式专属逻辑
         initModeSpecificLogic();
-
+        // 5. 创建并绑定场景
+        createScene();
         // 6. 启动游戏主循环
         startGameLoop(); // <--- 新增这行
 
@@ -278,20 +278,32 @@ public abstract class BaseGameScene {
     public double getHEIGHT() {
         return HEIGHT;
     }
+
+
+
+    // ========== 新增：获取主舞台（给设置窗口用） ==========
+    public Stage getPrimaryStage() {
+        return primaryStage;
+    }
+
     // ========== 新增：暂停游戏方法（父类通用实现，移除无效super调用） ==========
     protected void pauseGameProcess() {
         if (gameLoop != null) {
-            gameLoop.stop(); // 停止游戏循环
+            // 暂停循环（不是停止，避免重启时丢失状态）
+            gameLoop.stop(); // 这里stop是暂停，start可以恢复
         }
+        // 显示暂停提示
+        showTipText("游戏已暂停", 0); // 0表示永久显示，直到恢复
         SoundManager.getInstance().pauseBGM(); // 暂停背景音乐
     }
 
     // ========== 新增：恢复游戏方法（父类通用实现，移除无效super调用，调整gameOver逻辑） ==========
     protected void resumeGameProcess() {
         if (gameLoop != null) {
-            gameLoop.start(); // 启动游戏循环（子类可根据gameOver重写控制）
+            gameLoop.start(); // 恢复游戏循环
         }
+        // 隐藏暂停提示
+        stopCurrentTipAnimation();
         SoundManager.getInstance().playBGM(); // 恢复背景音乐
     }
-
 }

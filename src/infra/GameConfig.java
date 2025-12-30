@@ -51,7 +51,7 @@ public class GameConfig {
     // 1_000_000_000 / 60 ≈ 16,666,666 ns
     public static final long TIME_PER_FRAME = 1_000_000_000L / TARGET_FPS;
     // 在 GameConfig 类中添加：
-    public static final int PLAYER_HEALTH = 1000000;
+    public static final int PLAYER_HEALTH = 100;
     public static final int PLAYER_FIRE_COOLDOWN = 50; // 0.05秒一发
     public static final int PLAYER_BULLET_DAMAGE = 10000;
 
@@ -82,4 +82,15 @@ public class GameConfig {
     public static final int NORMAL_FIRE_COOLDOWN = 800;
     public static final int NORMAL_BULLET_DAMAGE = 20;
     public static final int NORMAL_SCORE_VALUE = 100;
+
+    // ========== 新增：游戏暂停状态 ==========
+    private static boolean isGamePaused = false;
+
+    public static boolean isGamePaused() {
+        return isGamePaused;
+    }
+
+    public static void setGamePaused(boolean paused) {
+        isGamePaused = paused;
+    }
 }
