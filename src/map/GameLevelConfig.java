@@ -34,4 +34,6 @@ public class GameLevelConfig {
             default: return Integer.MAX_VALUE;
         }
     }
+
+
 }

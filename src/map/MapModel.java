@@ -144,4 +144,8 @@ public class MapModel {
     public int getRows() { return rows; }
     public int getCols() { return cols; }
     public Tile[][] getTiles() { return tiles; }
+
+    public boolean isCampaignMode() {
+        return campaignMode;
+    }
 }
