@@ -1,5 +1,6 @@
 package view;
 
+import view.SoundManager;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
@@ -7,7 +8,6 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.StackPane;
 import javafx.scene.Scene;
-import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -65,11 +65,10 @@ public abstract class BaseGameScene {
         initCommonUI();
         // 3. 初始化输入监听
         initCommonInput();
-        // 5. 创建并绑定场景
-        createScene();
         // 4. 初始化模式专属逻辑
         initModeSpecificLogic();
-
+        // 5. 创建并绑定场景
+        createScene();
         // 6. 启动游戏主循环
         startGameLoop(); // <--- 新增这行
 
@@ -293,5 +292,4 @@ public abstract class BaseGameScene {
         }
         SoundManager.getInstance().playBGM(); // 恢复背景音乐
     }
-
 }

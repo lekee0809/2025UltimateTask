@@ -7,13 +7,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 音效管理类（单例模式）：修复背景音异常 + 音效按需加载
+ * 音效管理类（单例模式）：修复背景音异常 + 音效按需加载 + 新增游戏音乐game.wav
  */
 public class SoundManager {
     private static SoundManager instance;
-    private MediaPlayer backgroundPlayer; // 背景音播放器（全局唯一）
+    private MediaPlayer backgroundPlayer; // 主菜单背景音播放器（全局唯一）
     private MediaPlayer gameMusicPlayer;  // 游戏内音乐播放器（game.wav，全局唯一）
-    private Map<String, String> soundMap; // 音效路径映射
+    private Map<String, String> soundMap; // 音效/音乐路径映射
 
     // 私有构造（单例）
     private SoundManager() {
@@ -29,23 +29,24 @@ public class SoundManager {
     }
 
     /**
-     * 初始化音效路径（按需配置，避免未知类型报错）
+     * 初始化音效/音乐路径（新增 game 对应 game.wav）
      */
     private void initSoundMap() {
         soundMap = new HashMap<>();
-        // 背景音（你的背景音路径，替换为实际路径）
+        // 主菜单背景音
         soundMap.put("background", "sounds/background.wav");
-        //游戏音乐
+        // 游戏内音乐（新增：game.wav）
         soundMap.put("game", "sounds/game.wav");
-        // 有效音效（仅配置存在的文件，避免报错）
+        // 有效音效
         soundMap.put("shoot", "sounds/tank_fire.wav");
         soundMap.put("explosion", "sounds/explosion.wav");
-        // 重生音效（若有文件再添加，暂时注释避免报错）
+        // 重生音效（若有文件再启用，暂时注释）
         // soundMap.put("rebirth", "sounds/rebirth.wav");
     }
 
+    // ==================== 主菜单背景音相关方法（原有逻辑，保持不变） ====================
     /**
-     * 播放背景音（全局唯一，重复调用不重新播放）
+     * 播放主菜单背景音（background.wav）
      */
     public void playBackgroundMusic() {
         // 若背景音已在播放，直接返回
@@ -53,14 +54,16 @@ public class SoundManager {
             return;
         }
 
-        // 加载背景音（改用 getClass().getResource，兼容性更强）
+        // 加载主菜单背景音
         String bgPath = soundMap.get("background");
-        // 相对路径补充前缀 "/"，确保从 resources 根目录查找
         URL bgUrl = getClass().getResource("/" + bgPath);
         if (bgUrl == null) {
-            System.err.println("背景音文件不存在：" + bgPath + "，请检查资源路径");
+            System.err.println("主菜单背景音文件不存在：" + bgPath + "，请检查资源路径");
             return;
         }
+
+        // 停止游戏音乐（避免与主菜单背景音冲突）
+        stopGameMusic();
 
         // 创建播放器并循环播放
         Media bgMedia = new Media(bgUrl.toExternalForm());
@@ -70,7 +73,7 @@ public class SoundManager {
     }
 
     /**
-     * 停止背景音（仅在退出时调用）
+     * 停止主菜单背景音
      */
     public void stopBackgroundMusic() {
         if (backgroundPlayer != null && backgroundPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
@@ -79,55 +82,32 @@ public class SoundManager {
     }
 
     /**
-     * 播放普通音效（按需播放，不存在则提示不报错）
+     * 暂停主菜单背景音
      */
-    public void playSoundEffect(String soundType) {
-        // 校验音效类型是否存在
-        if (!soundMap.containsKey(soundType)) {
-            System.err.println("未知音效类型：" + soundType);
-            return;
-        }
-
-        // 加载音效文件（统一改用 getClass().getResource，保持一致性）
-        String soundPath = soundMap.get(soundType);
-        URL soundUrl = getClass().getResource("/" + soundPath);
-        if (soundUrl == null) {
-            System.err.println("音效文件不存在：" + soundPath + "，请检查资源路径");
-            return;
-        }
-
-        // 播放音效（单次播放，不循环）
-        Media soundMedia = new Media(soundUrl.toExternalForm());
-        MediaPlayer soundPlayer = new MediaPlayer(soundMedia);
-        soundPlayer.play();
-
-        // 播放完毕后释放资源
-        soundPlayer.setOnEndOfMedia(soundPlayer::dispose);
-    }
-
-    // 暂停背景音乐
     public void pauseBGM() {
         if (backgroundPlayer != null && backgroundPlayer.getStatus() == MediaPlayer.Status.PLAYING) {
             backgroundPlayer.pause();
         }
     }
 
-    // 播放/恢复背景音乐（修复：补充播放器未初始化的兜底逻辑）
+    /**
+     * 恢复/播放主菜单背景音
+     */
     public void playBGM() {
-        // 兜底：若播放器未初始化，先调用 playBackgroundMusic() 初始化并播放
+        // 兜底：若播放器未初始化，先初始化并播放
         if (backgroundPlayer == null) {
             playBackgroundMusic();
             return;
         }
 
-        // 原有逻辑：恢复暂停状态，或重置后播放
         if (backgroundPlayer.getStatus() == MediaPlayer.Status.PAUSED) {
             backgroundPlayer.play();
         } else if (backgroundPlayer.getStatus() != MediaPlayer.Status.PLAYING) {
-            backgroundPlayer.stop(); // 重置播放状态
+            backgroundPlayer.stop();
             backgroundPlayer.play();
         }
     }
+
     // ==================== 新增：游戏内音乐（game.wav）相关方法 ====================
     /**
      * 播放游戏内音乐（game.wav，无限循环）
@@ -191,4 +171,31 @@ public class SoundManager {
         }
     }
 
+    // ==================== 普通音效相关方法（原有逻辑，保持不变） ====================
+    /**
+     * 播放普通音效（按需播放，不存在则提示不报错）
+     */
+    public void playSoundEffect(String soundType) {
+        // 校验音效类型是否存在
+        if (!soundMap.containsKey(soundType)) {
+            System.err.println("未知音效类型：" + soundType);
+            return;
+        }
+
+        // 加载音效文件
+        String soundPath = soundMap.get(soundType);
+        URL soundUrl = getClass().getResource("/" + soundPath);
+        if (soundUrl == null) {
+            System.err.println("音效文件不存在：" + soundPath + "，请检查资源路径");
+            return;
+        }
+
+        // 播放音效（单次播放，不循环）
+        Media soundMedia = new Media(soundUrl.toExternalForm());
+        MediaPlayer soundPlayer = new MediaPlayer(soundMedia);
+        soundPlayer.play();
+
+        // 播放完毕后释放资源
+        soundPlayer.setOnEndOfMedia(soundPlayer::dispose);
+    }
 }
