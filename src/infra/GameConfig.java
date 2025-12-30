@@ -82,4 +82,15 @@ public class GameConfig {
     public static final int NORMAL_FIRE_COOLDOWN = 800;
     public static final int NORMAL_BULLET_DAMAGE = 20;
     public static final int NORMAL_SCORE_VALUE = 100;
+
+    // ========== 新增：游戏暂停状态 ==========
+    private static boolean isGamePaused = false;
+
+    public static boolean isGamePaused() {
+        return isGamePaused;
+    }
+
+    public static void setGamePaused(boolean paused) {
+        isGamePaused = paused;
+    }
 }

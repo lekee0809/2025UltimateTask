@@ -17,6 +17,12 @@ public abstract class GameLoop extends AnimationTimer {
 
     @Override
     public void handle(long now) {
+
+        // 暂停状态不执行任何逻辑
+        if (GameConfig.isGamePaused()) {
+            return;
+        }
+
         if (lastTime == 0) {
             lastTime = now;
             return;
