@@ -424,4 +424,9 @@ public class TwoPlayerGameScene extends BaseGameScene {
             SoundManager.getInstance().resumeGameMusic();
         }
     }
+
+    @Override
+    protected PlayerTank getPlayerTank() {
+        return null;
+    }
 }
