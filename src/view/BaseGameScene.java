@@ -88,6 +88,8 @@ public abstract class BaseGameScene {
 
     }
 
+
+
     // ========== 完整初始化分层UI（地图+坦克+子弹画布） ==========
     private void initCommonUI() {
         gameRoot = new StackPane();
@@ -299,26 +301,8 @@ public abstract class BaseGameScene {
         return primaryStage;
     }
 
-    // ========== 新增：暂停游戏方法（父类通用实现，移除无效super调用） ==========
-    protected void pauseGameProcess() {
-        if (gameLoop != null) {
-            // 暂停循环（不是停止，避免重启时丢失状态）
-            gameLoop.stop(); // 这里stop是暂停，start可以恢复
-        }
-        // 显示暂停提示
-        showTipText("游戏已暂停", 0); // 0表示永久显示，直到恢复
-        SoundManager.getInstance().pauseBGM(); // 暂停背景音乐
-    }
 
-    // ========== 新增：恢复游戏方法（父类通用实现，移除无效super调用，调整gameOver逻辑） ==========
-    protected void resumeGameProcess() {
-        if (gameLoop != null) {
-            gameLoop.start(); // 恢复游戏循环
-        }
-        // 隐藏暂停提示
-        stopCurrentTipAnimation();
-        SoundManager.getInstance().playBGM(); // 恢复背景音乐
-    }
+
     /**
      * 父类统一更新方法：处理道具拾取和特效逻辑
      */
@@ -371,5 +355,29 @@ public abstract class BaseGameScene {
     // 子类选择实现：处理炸弹爆炸对敌人的伤害
     protected void handleBombEffect(Item item) {
         // 默认留空，由具体场景类重写来传入敌人列表
+    }
+
+    // 补充：修复 pause/resume 中 GameConfig 状态同步
+    public void pauseGameProcess() {
+        if (gameLoop != null) {
+            gameLoop.stop();
+            GameConfig.setGamePaused(true); // 同步全局暂停状态
+        }
+        // 显示暂停提示
+        showTipText("游戏已暂停", 0); // 0表示永久显示，直到恢复
+        SoundManager.getInstance().pauseBGM();
+        SoundManager.getInstance().pauseGameMusic(); // 兼容双人模式音频
+    }
+
+
+    protected void resumeGameProcess() {
+        if (gameLoop != null && !GameConfig.isGameOver()) { // 游戏未结束才恢复
+            gameLoop.start();
+            GameConfig.setGamePaused(false); // 同步全局暂停状态
+        }
+        // 隐藏暂停提示
+        stopCurrentTipAnimation();
+        SoundManager.getInstance().playBGM();
+        SoundManager.getInstance().resumeGameMusic(); // 兼容双人模式音频
     }
 }

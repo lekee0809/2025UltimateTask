@@ -93,4 +93,23 @@ public class GameConfig {
     public static void setGamePaused(boolean paused) {
         isGamePaused = paused;
     }
+
+    // 游戏结束状态管理
+    private static boolean gameOver = false;
+
+    // 判断游戏是否结束（BaseGameScene 调用的核心方法）
+    public static boolean isGameOver() {
+        return gameOver;
+    }
+
+    // 设置游戏结束状态（供子类更新状态用）
+    public static void setGameOver(boolean isOver) {
+        gameOver = isOver;
+    }
+
+    // 可选：重置游戏状态（比如重新开始游戏时调用）
+    public static void resetGameState() {
+        gameOver = false;
+        setGamePaused(false); // 顺带重置暂停状态
+    }
 }
