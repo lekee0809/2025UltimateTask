@@ -2,6 +2,8 @@ package map;
 import java.util.*;
 
 import infra.GameConfig;
+import model.Tile;
+import model.TileType;
 
 /**
  * 野外大战场生成器 (Battlefield V3 - 丰满版)
@@ -20,39 +22,32 @@ public class BattlefieldMapGenerator {
     private static final int BRIDGE_INTERVAL = 15;
 
     public int[][] generate() {
-        int attempt = 0;
-        while (attempt < MAX_ATTEMPTS) {
-            attempt++;
-
-            // 1. 初始化：全是大平原
-            map = new int[GameConfig.MAP_ROWS][GameConfig.MAP_COLS];
-            for (int r = 0; r < GameConfig.MAP_ROWS; r++) {
-                Arrays.fill(map[r], GameConfig.TILE_EMPTY);
-            }
-
-            // 2. 生成主要地形
-            generateContinuousRiver(); // 河流
-            generateMountainRidges();  // 山脉
-
-            // === 核心优化：填充空旷区域 ===
-            generateRuinsClusters();   // 大型废墟 (数量增加)
-            generateMiniBunkers();     // 新增：小型碉堡 (L型/U型掩体)
-            generateScatteredDebris(); // 新增：零散掩体 (散兵坑)
-
-            generateForests();         // 植被 (保持点缀)
-
-            // 3. 清理出生点
-            clearSafeZones();
-
-            // 4. 连通性检查
-            if (checkConnectivity()) {
-                System.out.println("Battlefield V3 generated! (Attempt " + attempt + ")");
-                return map;
-            }
+        // 1. 初始化：全是大平原
+        map = new int[GameConfig.MAP_ROWS][GameConfig.MAP_COLS];
+        for (int r = 0; r < GameConfig.MAP_ROWS; r++) {
+            Arrays.fill(map[r], GameConfig.TILE_EMPTY);
         }
+
+        // 2. 生成主要地形
+        generateContinuousRiver(); // 河流
+        generateMountainRidges();  // 山脉
+
+        // 3. 填充细节
+        generateRuinsClusters();   // 废墟
+        generateMiniBunkers();     // 碉堡
+        generateScatteredDebris(); // 散兵坑
+        generateForests();         // 植被
+
+        // 4. 清理出生点 (确保起点 2,2 是安全的)
+        clearSafeZones();
+
+        // 5. 【核心修改】不再重试，直接修复孤岛
+        // 这一步会把所有玩家走不到的空地填成石头
+        fixMapConnectivity();
+
+        System.out.println("Battlefield Map generated and fixed.");
         return map;
     }
-
     // ... (generateContinuousRiver, drawRiverSlice, buildBridge 保持不变，省略以节省空间) ...
     // 请直接保留原有的这三个河流相关方法代码
     private void generateContinuousRiver() {
@@ -327,4 +322,73 @@ public class BattlefieldMapGenerator {
     public void setRandom(Random random) {
         this.random = random;
     }
-}
+
+    // 把这个方法加到 MapModel.java 或者 MapGenerator.java 中
+    /**
+     * 【核心修复逻辑】填埋孤岛
+     * 从玩家出生点 (2,2) 开始洪水填充，把所有走不到的空地填成石头。
+     */
+    private void fixMapConnectivity() {
+        // 1. 准备 visited 数组，记录哪些格子是连通的
+        boolean[][] visited = new boolean[GameConfig.MAP_ROWS][GameConfig.MAP_COLS];
+        Queue<int[]> queue = new LinkedList<>();
+
+        // 2. 设定起点 (我们已经 clearSafeZones 保证了 2,2 是空地)
+        int startR = 2;
+        int startC = 2;
+
+        // 兜底：万一 2,2 不是空地，强行挖空，防止 BFS 启动失败
+        if (map[startR][startC] != GameConfig.TILE_EMPTY) {
+            map[startR][startC] = GameConfig.TILE_EMPTY;
+        }
+
+        // 3. 开始 BFS
+        queue.offer(new int[]{startR, startC});
+        visited[startR][startC] = true;
+
+        int[][] dirs = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+
+        while (!queue.isEmpty()) {
+            int[] curr = queue.poll();
+            int r = curr[0];
+            int c = curr[1];
+
+            for (int[] d : dirs) {
+                int nr = r + d[0];
+                int nc = c + d[1];
+
+                // 越界检查
+                if (nr < 0 || nr >= GameConfig.MAP_ROWS || nc < 0 || nc >= GameConfig.MAP_COLS) continue;
+                if (visited[nr][nc]) continue;
+
+                // 获取地形类型 (int)
+                int type = map[nr][nc];
+
+                // 判断是否可通行 (空地 或 草地)
+                // 注意：这里只认 空地和草地 为通路，水面和墙壁都是阻断
+                if (type == GameConfig.TILE_EMPTY || type == GameConfig.TILE_GRASS) {
+                    visited[nr][nc] = true;
+                    queue.offer(new int[]{nr, nc});
+                }
+            }
+        }
+
+        // 4. 填埋孤岛
+        // 遍历全图，凡是本来能走(空地/草地) 但 visited=false 的，都是孤岛
+        int fixedCount = 0;
+        for (int r = 0; r < GameConfig.MAP_ROWS; r++) {
+            for (int c = 0; c < GameConfig.MAP_COLS; c++) {
+                int type = map[r][c];
+
+                if ((type == GameConfig.TILE_EMPTY || type == GameConfig.TILE_GRASS) && !visited[r][c]) {
+                    // 把它填成石头，彻底封死
+                    map[r][c] = GameConfig.TILE_STONE;
+                    fixedCount++;
+                }
+            }
+        }
+
+        if (fixedCount > 0) {
+            System.out.println("修复地图连通性：填埋了 " + fixedCount + " 个孤岛区域。");
+        }
+    }}
