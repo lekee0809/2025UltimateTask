@@ -186,7 +186,6 @@ public class TwoPlayerGameScene extends BaseGameScene {
             } else if (result.get() == backToMainBtn) {
                 // 1. 停止游戏背景音乐，避免与主菜单音频冲突
                 SoundManager.getInstance().stopGameMusic();
-                // 播放主菜单背景音
                 SoundManager.getInstance().playBackgroundMusic();
                 // 2. 核心修改：重新初始化 AppLauncher 主菜单
                 AppLauncher mainMenu = new AppLauncher();

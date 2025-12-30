@@ -127,10 +127,23 @@ public class EndlessGameScene extends BaseGameScene {
     }
 
     private void initializePlayer() {
-        // 设定左上角为默认出生点 (1,1 格子)
-        // 注意：使用 GRID_SIZE 确保对齐
-        double startX = GameConfig.GRID_SIZE * 1;
-        double startY = GameConfig.GRID_SIZE * 1;
+        // 1. 寻找玩家的安全出生点 (true 表示只在地图下方找)
+        // 如果实在是运气差找不到，findFreeGridTile 会返回默认点 (1,1)
+        int[] validPos = findFreeGridTile(true);
+
+        // 兜底：如果连随机都失败，就回退到 (1,1) 或者固定点，
+        // 只有这种极端情况才需要考虑破坏地形，但通常不需要
+        if (validPos == null) {
+            validPos = new int[]{1, 1}; // 左上角保底
+        }
+
+        int gridR = validPos[0];
+        int gridC = validPos[1];
+
+        // 居中计算
+        double offset = (GameConfig.GRID_SIZE - GameConfig.TANK_SIZE) / 2.0;
+        double startX = gridC * GameConfig.GRID_SIZE + offset;
+        double startY = gridR * GameConfig.GRID_SIZE + offset;
 
         if (player == null) {
             player = new PlayerTank(startX, startY);
@@ -147,14 +160,7 @@ public class EndlessGameScene extends BaseGameScene {
             player.setHealth(GameConfig.PLAYER_HEALTH);
             player.setAlive(true);
         }
-
-        // ==========================================
-        // ⭐ 暴力修复：出生点强制拆迁
-        // 不管地图生成器有没有清理干净，这里再清理一次，确保万无一失
-        // ==========================================
-        forceClearArea(startX, startY);
     }
-
     /**
      * 强制清理指定像素坐标周围的障碍物
      * 确保坦克出生时绝对不会卡在墙里
@@ -260,37 +266,29 @@ public class EndlessGameScene extends BaseGameScene {
     }
 
     private void spawnEnemy() {
-        // 1. 核心修复：不再随机像素坐标，而是随机 "格子索引"
-        // 这样保证坦克永远在格子的正中间，不会一半在墙里一半在外面
-        int gridX = random.nextInt(GameConfig.MAP_COLS);
-        int gridY = random.nextInt(GameConfig.MAP_ROWS / 2); // 敌人通常在地图上半部分生成
+        // 1. 寻找一个合法的网格坐标 (Row, Col)
+        // 我们尝试 100 次，如果地图实在太挤找不到，就放弃这次生成，或者生在默认点
+        int[] validPos = findFreeGridTile(false); // false 表示不是玩家，可以生在地图任意位置(通常上半区)
 
-        // 2. 尝试找一个原本就是空的地方 (尝试 10 次)
-        for (int i = 0; i < 10; i++) {
-            int testC = random.nextInt(GameConfig.MAP_COLS);
-            int testR = random.nextInt(GameConfig.MAP_ROWS / 2);
-            // 检查这个格子本身以及右边、下边的格子是否安全
-            if (isAreaClear(testR, testC)) {
-                gridX = testC;
-                gridY = testR;
-                break;
-            }
+        if (validPos == null) {
+            System.out.println("⚠️ 警告：当前地图太拥挤，无法生成新敌人");
+            return;
         }
 
-        // 3. 计算实际像素坐标 (严格对齐网格左上角)
-        double spawnX = gridX * GameConfig.GRID_SIZE;
-        double spawnY = gridY * GameConfig.GRID_SIZE;
+        int gridR = validPos[0];
+        int gridC = validPos[1];
 
-        // ==========================================
-        // ⭐ 关键：不管刚才找的位置是不是空的，
-        // 既然决定在这里出生，就强制把这里挖空！
-        // ==========================================
-        forceClearArea(spawnX, spawnY);
+        // 2. 将网格坐标转换为像素坐标
+        // 居中计算：(格子宽 - 坦克宽) / 2
+        double offset = (GameConfig.GRID_SIZE - GameConfig.TANK_SIZE) / 2.0;
+        double spawnX = gridC * GameConfig.GRID_SIZE + offset;
+        double spawnY = gridR * GameConfig.GRID_SIZE + offset;
 
-        // 4. 生成坦克实体
+        // 3. 生成坦克 (完全不需要 forceClearArea 了！)
         TankType type = TankType.ENEMY_NORMAL;
         double roll = random.nextDouble();
-        // 难度公式
+
+        // ... (原有的难度判断代码保持不变) ...
         double heavyChance = Math.min(0.4, currentWave * 0.05);
         double fastChance = Math.min(0.3, currentWave * 0.03);
 
@@ -306,6 +304,83 @@ public class EndlessGameScene extends BaseGameScene {
 
         enemyTanks.add(enemy);
     }
+    /**
+     * 在地图上随机寻找一个空闲的格子
+     * @param isPlayer true=只在地图下方找; false=全图(或上半区)找
+     * @return int[]{row, col} 或者 null (没找到)
+     */
+    private int[] findFreeGridTile(boolean isPlayer) {
+        if (mapModel == null) return new int[]{1, 1};
+
+        int maxAttempts = 100;
+        // 定义左上角“基地/安全区”的大小 (比如 6x6)
+        // 这个区域只允许玩家出生，敌人禁止进入
+        int safeZoneSize = 6;
+
+        for (int i = 0; i < maxAttempts; i++) {
+            int c, r;
+
+            if (isPlayer) {
+                // 【玩家】：限制在左上角安全区内
+                c = random.nextInt(safeZoneSize);
+                r = random.nextInt(safeZoneSize);
+            } else {
+                // 【敌人】：全图随机，但要剔除左上角
+                c = random.nextInt(GameConfig.MAP_COLS);
+                r = random.nextInt(GameConfig.MAP_ROWS);
+
+                // 关键逻辑：如果敌人随机到了左上角安全区，直接跳过本次循环，重新随
+                if (c < safeZoneSize && r < safeZoneSize) {
+                    continue;
+                }
+            }
+
+            // 越界保护
+            if (r < 0 || r >= GameConfig.MAP_ROWS || c < 0 || c >= GameConfig.MAP_COLS) continue;
+
+            // 地形检查
+            Tile t = mapModel.getTile(r, c);
+
+            // 只要是空地或草地就可以
+            if (t != null && (t.getType() == TileType.EMPTY || t.getType() == TileType.GRASS)) {
+                // 检查是否重叠
+                if (!isPositionOccupiedByTank(c, r)) {
+                    return new int[]{r, c};
+                }
+            }
+        }
+
+        return null;
+    }
+    /**
+     * 检查某个网格坐标上是否已经有坦克霸占了
+     */
+    private boolean isPositionOccupiedByTank(int col, int row) {
+        // 转换成中心点像素用于检测
+        double centerX = col * GameConfig.GRID_SIZE + GameConfig.GRID_SIZE / 2.0;
+        double centerY = row * GameConfig.GRID_SIZE + GameConfig.GRID_SIZE / 2.0;
+        double checkRadius = GameConfig.GRID_SIZE / 1.5; // 检查半径
+
+        // 检查玩家
+        if (player != null && player.isAlive()) {
+            if (Math.abs(player.getCenterX() - centerX) < checkRadius &&
+                    Math.abs(player.getCenterY() - centerY) < checkRadius) {
+                return true;
+            }
+        }
+
+        // 检查其他敌人
+        for (Tank t : enemyTanks) {
+            if (t.isAlive()) {
+                if (Math.abs(t.getCenterX() - centerX) < checkRadius &&
+                        Math.abs(t.getCenterY() - centerY) < checkRadius) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * 检查以 (row, col) 为左上角的 2x2 格子区域是否为空
      * (因为坦克大小接近 40px，可能会稍微蹭到右边或下边的格子，保险起见查 2x2)
