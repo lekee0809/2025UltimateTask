@@ -1,5 +1,6 @@
 package view;
 import item.Item;
+import item.ItemSpawner;
 import item.ItemType;
 import javafx.scene.image.Image;
 import javafx.animation.AnimationTimer;
@@ -37,7 +38,7 @@ public class StageGameScene extends BaseGameScene {
     private List<Bullet> bullets;          // 子弹列表
     private MapModel mapModel;             // 地图模型
     private Tile[][] map;                  // 地图瓦片数组
-    private List<Item> items;                    // 道具列表
+    private ItemSpawner itemSpawner;
     private Map<ItemType, Image> itemImages;     // 道具图片缓存
 
 
@@ -95,9 +96,11 @@ public class StageGameScene extends BaseGameScene {
         // 初始化对象列表
         enemyTanks = new ArrayList<>();
         bullets = new ArrayList<>();
-        items = new ArrayList<>();
         itemImages = new HashMap<>();
         loadItemImages();
+        //道具初始化
+        itemSpawner = new ItemSpawner();
+
 
         System.out.println("🚀 开始初始化闯关模式...");
 
@@ -151,6 +154,8 @@ public class StageGameScene extends BaseGameScene {
         isLevelComplete = false;
         levelStartTime = System.currentTimeMillis();
         gameElapsedTime = 0;
+        itemSpawner.clear();
+
 
         // 获取当前关卡的目标分数
         targetScore = GameLevelConfig.getTargetScore(level);
@@ -451,72 +456,14 @@ public class StageGameScene extends BaseGameScene {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        updateItems();
+        itemSpawner.update(player,enemyTanks);
 
     }
-
-    /**
-     * 这里是 渲染逻辑
-     * 对应以前的 renderGame()
-     */
-    @Override
-    protected void renderGameFrame() {
-        // 【注意】不需要再写 gc.fillRect(Color.BLACK) 了，父类已经帮你清空了！
-
-        // 我们需要分别获取不同层的画笔
-        // 你的 BaseGameScene 提供了 mapGc, tankGc, bulletGc
-
-        try {
-            // 1. 绘制地图底层 (画在 mapGc 上)
-            if (map != null) {
-                spritePainter.drawMapBackground(mapGc, map);
-            }
-
-            // 2. 绘制坦克 (画在 tankGc 上)
-            // 敌人
-            for (Tank enemy : enemyTanks) {
-                if (enemy.isAlive()) {
-                    // 确保 Tank 类的 draw 方法支持传入 GraphicsContext
-                    // 或者使用 spritePainter.drawTank(tankGc, enemy);
-                    enemy.draw(tankGc);
-                }
-            }
-            // 玩家
-            if (player != null && player.isAlive()) {
-                player.draw(tankGc);
-            }
-
-            // 3. 绘制子弹 (画在 bulletGc 上)
-            for (Bullet bullet : bullets) {
-                if (bullet.alive) {
-                    bullet.draw(bulletGc);
-                }
-            }
-
-            // 4. 绘制地图前景 (草丛) (画在 tankGc 或 bulletGc 上均可，看遮挡关系)
-            if (map != null) {
-                spritePainter.drawMapForeground(tankGc, map);
-            }
-            // 绘制道具
-            drawItems(tankGc); // 可以画在tank层或bullet层，看你想让道具被什么遮挡
-
-
-            // 5. 绘制 HUD (建议画在 bulletGc 上，或者你再加一个 uiCanvas)
-            // 这里暂时画在最顶层的 bulletGc 上，确保文字在最上面
-            drawHUD(bulletGc);
-            drawGameStateMessages(bulletGc);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-    // ========== 添加 drawItems 方法 ==========
     private void drawItems(GraphicsContext gc) {
-        for (Item item : items) {
+        for (Item item : itemSpawner.getActiveItems()) {
             drawSingleItem(gc, item);
         }
     }
-
     private void drawSingleItem(GraphicsContext gc, Item item) {
         if (!item.isActive() || !item.isVisible()) return;
 
@@ -592,6 +539,60 @@ public class StageGameScene extends BaseGameScene {
     }
 
 
+
+    /**
+     * 这里是 渲染逻辑
+     * 对应以前的 renderGame()
+     */
+    @Override
+    protected void renderGameFrame() {
+        // 【注意】不需要再写 gc.fillRect(Color.BLACK) 了，父类已经帮你清空了！
+
+        // 我们需要分别获取不同层的画笔
+        // 你的 BaseGameScene 提供了 mapGc, tankGc, bulletGc
+
+        try {
+            // 1. 绘制地图底层 (画在 mapGc 上)
+            if (map != null) {
+                spritePainter.drawMapBackground(mapGc, map);
+            }
+
+            // 2. 绘制坦克 (画在 tankGc 上)
+            // 敌人
+            for (Tank enemy : enemyTanks) {
+                if (enemy.isAlive()) {
+                    // 确保 Tank 类的 draw 方法支持传入 GraphicsContext
+                    // 或者使用 spritePainter.drawTank(tankGc, enemy);
+                    enemy.draw(tankGc);
+                }
+            }
+            // 玩家
+            if (player != null && player.isAlive()) {
+                player.draw(tankGc);
+            }
+
+            // 3. 绘制子弹 (画在 bulletGc 上)
+            for (Bullet bullet : bullets) {
+                if (bullet.alive) {
+                    bullet.draw(bulletGc);
+                }
+            }
+
+            // 4. 绘制地图前景 (草丛) (画在 tankGc 或 bulletGc 上均可，看遮挡关系)
+            if (map != null) {
+                spritePainter.drawMapForeground(tankGc, map);
+            }
+
+
+            // 5. 绘制 HUD (建议画在 bulletGc 上，或者你再加一个 uiCanvas)
+            // 这里暂时画在最顶层的 bulletGc 上，确保文字在最上面
+            drawHUD(bulletGc);
+            drawGameStateMessages(bulletGc);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     // ... 此时你可以把旧的 updateGame() 和 renderGame() 方法删掉了 ...
     // ... restartGame, pauseGame 方法里对 gameLoop 的调用也要改 ...
 
@@ -816,98 +817,16 @@ public class StageGameScene extends BaseGameScene {
                         playerScore += enemy.getScoreValue();
                         System.out.println("🎯 击毁敌人！得分: " + enemy.getScoreValue() +
                                 "，总分: " + playerScore);
-                        spawnItemOnEnemyDeath(enemy);
+                        if (enemy instanceof EnemyTank) {
+                            itemSpawner.onEnemyDestroyed((EnemyTank) enemy);
+                        }
                     }
                     break;
                 }
             }
         }
     }
-    /**
-     * 【修正】敌人死亡时概率掉落道具
-     */
-    private void spawnItemOnEnemyDeath(Tank enemy) {
-        // 根据敌人类型确定掉落概率
-        double dropProbability;
 
-        if (enemy instanceof NormalTank) {
-            dropProbability = 0.40; // 普通坦克40%掉落
-        } else if (enemy instanceof FastTank) {
-            dropProbability = 0.50; // 快速坦克50%掉落
-        } else if (enemy instanceof HeavyTank) {
-            dropProbability = 0.70; // 重型坦克70%掉落
-        } else {
-            dropProbability = 0.30; // 默认30%
-        }
-
-        // 随机决定是否掉落道具
-        double dropRoll = random.nextDouble();
-        if (dropRoll < dropProbability) {
-            // 在敌人死亡位置生成道具
-            double itemX = enemy.getCenterX() - GameConfig.GRID_SIZE / 2;
-            double itemY = enemy.getCenterY() - GameConfig.GRID_SIZE / 2;
-
-            // 确定道具类型（回血40%，无敌50%，导弹10%）
-            double itemRoll = random.nextDouble();
-            Item item;
-
-            if (itemRoll < 0.40) {  // 0-0.4：回血道具（40%）
-                item = new Item(itemX, itemY, ItemType.HEAL);
-            } else if (itemRoll < 0.90) {  // 0.4-0.9：无敌道具（50%）
-                item = new Item(itemX, itemY, ItemType.INVINCIBLE);
-            } else {  // 0.9-1.0：导弹道具（10%）
-                item = new Item(itemX, itemY, ItemType.BOMB);
-            }
-
-            items.add(item);
-
-            System.out.println(String.format("🎁 敌人掉落%s道具 (掉落概率%.0f%%, 类型概率%.0f%%)",
-                    item.getType().getName(), dropProbability*100,
-                    (item.getType() == ItemType.HEAL ? 40 :
-                            item.getType() == ItemType.INVINCIBLE ? 50 : 10)));
-        } else {
-            // 不掉落道具，可以在这里添加调试信息
-            System.out.println("❌ 敌人死亡但未掉落道具 (概率: " + (int)(dropProbability*100) + "%)");
-        }
-    }
-    // ========== 添加 updateItems 方法 ==========
-    private void updateItems() {
-        // 更新道具动画
-        for (int i = items.size() - 1; i >= 0; i--) {
-            Item item = items.get(i);
-            item.updateAnimation();
-
-            // 移除过期的道具
-            if (!item.isActive()) {
-                items.remove(i);
-                continue;
-            }
-
-            // 检查与玩家的碰撞
-            if (player != null && player.isAlive() && item.checkCollision(player)) {
-                // 根据道具类型处理效果
-                if (item.getType() == ItemType.BOMB) {
-                    // 炸弹效果：全图敌人扣50血
-                    item.applyBombEffect(enemyTanks);
-
-                    // 重新检查是否有敌人死亡并增加分数
-                    for (int j = enemyTanks.size() - 1; j >= 0; j--) {
-                        Tank enemy = enemyTanks.get(j);
-                        if (!enemy.isAlive()) {
-                            playerScore += enemy.getScoreValue();
-                            System.out.println("💣 炸弹击杀敌人，得分: " + enemy.getScoreValue());
-                        }
-                    }
-                } else {
-                    // 回血或无敌效果
-                    item.applyEffect(player);
-                }
-
-                // 移除已被拾取的道具
-                items.remove(i);
-            }
-        }
-    }
 
     /**
      * 检查两个实体是否碰撞
@@ -930,8 +849,6 @@ public class StageGameScene extends BaseGameScene {
 
         // 清理无效子弹
         bullets.removeIf(bullet -> !bullet.alive);
-        // 清理过期的道具
-        items.removeIf(item -> !item.isActive());
     }
 
     /**
