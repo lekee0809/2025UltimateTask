@@ -1,5 +1,10 @@
 package view;
 
+import item.Item;
+import item.ItemSpawner;
+import item.ItemType;
+import item.ParticleEffect;
+import model.PlayerTank;
 import view.SoundManager;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
@@ -20,6 +25,9 @@ import model.Tank;
 import controller.InputHandler;
 import infra.GameLoop;
 import infra.GameConfig; // 新增导入
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static infra.GameConfig.SCREEN_WIDTH;
 import static infra.GameConfig.SCREEN_HEIGHT;
@@ -54,11 +62,16 @@ public abstract class BaseGameScene {
     // 提示文本相关
     private Text tipText;
     private Animation currentTipAnimation;
+    // ===================== 新增道具管理属性 =====================
+    protected ItemSpawner itemSpawner;               // 道具生成器
+    protected List<ParticleEffect> particleEffects;  // 粒子特效列表
 
     // 构造方法（初始化流程优化）
     public BaseGameScene(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.spritePainter = new SpritePainter();
+        this.itemSpawner = new ItemSpawner();
+        this.particleEffects = new ArrayList<>();
 
         // 1. 初始化提示文本
         initTipText();
@@ -305,5 +318,58 @@ public abstract class BaseGameScene {
         // 隐藏暂停提示
         stopCurrentTipAnimation();
         SoundManager.getInstance().playBGM(); // 恢复背景音乐
+    }
+    /**
+     * 父类统一更新方法：处理道具拾取和特效逻辑
+     */
+    protected void updateBaseElements() {
+        PlayerTank player = getPlayerTank();
+        if (player == null) return;
+
+        // 1. 更新道具逻辑（位置、消失、玩家拾取）
+        itemSpawner.update(player);
+
+        // 2. 自动处理本帧拾取后的通用效果
+        for (Item item : itemSpawner.getCollectedItems()) {
+            // 生成金色粒子特效
+            particleEffects.add(new ParticleEffect(
+                    item.getX() + item.getWidth()/2,
+                    item.getY() + item.getHeight()/2,
+                    15, Color.GOLD, 0.5f
+            ));
+
+            // 如果是炸弹，由于涉及场景内所有敌人，我们调用一个子类可以覆盖的方法
+            if (item.getType() == ItemType.BOMB) {
+                handleBombEffect(item);
+            }
+        }
+
+        // 3. 更新粒子特效
+        particleEffects.removeIf(ParticleEffect::isFinished);
+        for (ParticleEffect effect : particleEffects) {
+            effect.update(0.016f); // 约60FPS
+        }
+    }
+    /**
+     * 父类统一渲染方法
+     */
+    protected void renderBaseElements() {
+        // 绘制道具到坦克层
+        for (Item item : itemSpawner.getActiveItems()) {
+            spritePainter.drawItem(tankGc, item);
+        }
+
+        // 绘制特效到子弹层（最顶层）
+        for (ParticleEffect effect : particleEffects) {
+            spritePainter.drawParticleEffect(bulletGc, effect);
+        }
+    }
+
+    // 子类必须实现：返回当前的玩家坦克
+    protected abstract PlayerTank getPlayerTank();
+
+    // 子类选择实现：处理炸弹爆炸对敌人的伤害
+    protected void handleBombEffect(Item item) {
+        // 默认留空，由具体场景类重写来传入敌人列表
     }
 }
