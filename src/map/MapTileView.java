@@ -132,4 +132,56 @@ public class MapTileView extends Canvas {
     public void reloadImages() {
         loadImages();
     }
+
+    public ResourceManager getResourceManager() {
+        return resourceManager;
+    }
+
+    public Image getFloorImage() {
+        return floorImage;
+    }
+
+    public void setFloorImage(Image floorImage) {
+        this.floorImage = floorImage;
+    }
+
+    public Image getBrickImage() {
+        return brickImage;
+    }
+
+    public void setBrickImage(Image brickImage) {
+        this.brickImage = brickImage;
+    }
+
+    public Image getStoneImage() {
+        return stoneImage;
+    }
+
+    public void setStoneImage(Image stoneImage) {
+        this.stoneImage = stoneImage;
+    }
+
+    public Image getWaterImage() {
+        return waterImage;
+    }
+
+    public void setWaterImage(Image waterImage) {
+        this.waterImage = waterImage;
+    }
+
+    public Image getGrassImage() {
+        return grassImage;
+    }
+
+    public void setGrassImage(Image grassImage) {
+        this.grassImage = grassImage;
+    }
+
+    public Image getBrokenBrickImage() {
+        return brokenBrickImage;
+    }
+
+    public void setBrokenBrickImage(Image brokenBrickImage) {
+        this.brokenBrickImage = brokenBrickImage;
+    }
 }

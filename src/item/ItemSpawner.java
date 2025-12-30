@@ -161,4 +161,20 @@ public class ItemSpawner {
         return String.format("道具统计: 回血[%d] 无敌[%d] 炸弹[%d]",
                 healCount, invincibleCount, bombCount);
     }
+
+    public void setActiveItems(List<Item> activeItems) {
+        this.activeItems = activeItems;
+    }
+
+    public void setCollectedItems(List<Item> collectedItems) {
+        this.collectedItems = collectedItems;
+    }
+
+    public Random getRandom() {
+        return random;
+    }
+
+    public void setRandom(Random random) {
+        this.random = random;
+    }
 }

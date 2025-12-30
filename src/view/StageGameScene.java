@@ -191,64 +191,59 @@ public class StageGameScene extends BaseGameScene {
      * 【修复】初始化玩家坦克
      * 增加防卡墙检测：如果预设位置有墙，自动在附近寻找空地
      */
+    /**
+     * 【已优化】初始化玩家坦克
+     */
     private void initializePlayerTank(int level) {
         double x, y;
 
-        // 1. 先设定每个关卡的理想出生点 (预设位置)
-        switch (level) {
-            case 1:
-                x = 100;
-                y = GameConfig.SCREEN_HEIGHT - 150;
-                break;
-            case 2:
-                x = GameConfig.SCREEN_WIDTH / 2 - 50;
-                y = GameConfig.SCREEN_HEIGHT - 100;
-                break;
-            case 3:
-                x = GameConfig.SCREEN_WIDTH - 150;
-                y = GameConfig.SCREEN_HEIGHT - 150;
-                break;
-            default:
-                x = 100;
-                y = GameConfig.SCREEN_HEIGHT - 150;
+        // 1. 尝试使用智能查找获取安全位置
+        double[] safePos = findFreeSpawnPoint(true);
+
+        if (safePos != null) {
+            x = safePos[0];
+            y = safePos[1];
+        } else {
+            // 兜底：如果实在找不到，强制放在地图中间下方，并清除该处障碍
+            System.out.println("⚠️ 警告：无法找到玩家安全点，使用强制坐标");
+            x = GameConfig.SCREEN_WIDTH / 2.0 - 20;
+            y = GameConfig.SCREEN_HEIGHT - 100;
+            // 暴力清除出生点周围的墙 (防止卡死)
+            forceClearAreaAt(x, y);
         }
 
-        // 2. 【核心修复】检查预设点是否安全
-        // 如果预设点撞墙了，就尝试在底部区域随机找一个安全点
-        int attempts = 0;
-        while (!isPositionSafe(x, y) && attempts < 100) {
-            // 在屏幕底部 300 像素范围内随机寻找
-            x = 50 + random.nextDouble() * (GameConfig.SCREEN_WIDTH - 100);
-            y = GameConfig.SCREEN_HEIGHT - 300 + random.nextDouble() * 200;
-            attempts++;
-        }
-
-        if (attempts >= 100) {
-            System.out.println("⚠️ 警告：无法找到玩家安全出生点，强制生成在预设位置");
-        }
-
-        // 3. 继承上一关的血量 (如果是第一关则满血)
+        // 2. 创建或重置玩家
         if (player == null || level == 1) {
             player = new PlayerTank(x, y);
-            playerHealth = GameConfig.PLAYER_HEALTH; // 新游戏满血
+            playerHealth = GameConfig.PLAYER_HEALTH;
         } else {
-            // 继承状态但更新位置
             player.x = x;
             player.y = y;
-            // 过关奖励：回复 30% 血量
-            int heal = (int)(GameConfig.PLAYER_HEALTH * 0.3);
-            player.setHealth(Math.min(GameConfig.PLAYER_HEALTH, player.getHealth() + heal));
-            playerHealth = player.getHealth();
-            // 还要记得停止上一关的移动状态，否则进新关卡会自己跑
+            // 停止运动
             player.setMovingForward(false);
             player.setMovingBackward(false);
             player.setRotatingLeft(false);
             player.setRotatingRight(false);
+            // 回血奖励
+            int heal = (int)(GameConfig.PLAYER_HEALTH * 0.3);
+            player.setHealth(Math.min(GameConfig.PLAYER_HEALTH, player.getHealth() + heal));
+            playerHealth = player.getHealth();
         }
 
-        System.out.println("✅ 玩家坦克初始化完成，位置: (" + (int)x + ", " + (int)y + ")");
+        // 给玩家 3秒无敌
+        player.activateShield(3.0);
+
+        System.out.println("✅ 玩家初始化于: " + (int)x + "," + (int)y);
     }
 
+    // 辅助：强制清理一片区域（兜底用）
+    private void forceClearAreaAt(double pixelX, double pixelY) {
+        int c = (int)(pixelX / GameConfig.GRID_SIZE);
+        int r = (int)(pixelY / GameConfig.GRID_SIZE);
+        if (r>=0 && r<GameConfig.MAP_ROWS && c>=0 && c<GameConfig.MAP_COLS) {
+            map[r][c].setType(model.TileType.EMPTY);
+        }
+    }
     /**
      * 【通用工具】检查某个坐标放置坦克是否安全
      * (这个方法可以直接复用给敌人生成逻辑)
@@ -312,40 +307,24 @@ public class StageGameScene extends BaseGameScene {
     /**
      * 创建单个敌人坦克
      */
+    /**
+     * 【已优化】创建单个敌人坦克
+     */
     private Tank createEnemyTank(TankType type, int level) {
+        // 1. 使用智能算法寻找位置
+        double[] pos = findFreeSpawnPoint(false); // false 表示寻找敌人位置
+
         double x, y;
-        boolean isSafe;
-        int attempts = 0;
+        if (pos != null) {
+            x = pos[0];
+            y = pos[1];
+        } else {
+            // 实在找不到位置（地图太满了），就不生成这个敌人了
+            System.out.println("❌ 地图太拥挤，无法生成敌人: " + type);
+            return null;
+        }
 
-        // --- 开始寻找安全位置 ---
-        do {
-            isSafe = true;
-
-            // 1. 根据关卡生成随机坐标 (这是你原本的逻辑)
-            if (level == 2) {
-                if (random.nextBoolean()) x = 50 + random.nextDouble() * 100;
-                else x = GameConfig.SCREEN_WIDTH - 150 + random.nextDouble() * 100;
-                y = 100 + random.nextDouble() * (GameConfig.SCREEN_HEIGHT / 2);
-            } else {
-                x = 100 + random.nextDouble() * (GameConfig.SCREEN_WIDTH - 200);
-                y = 100 + random.nextDouble() * (GameConfig.SCREEN_HEIGHT / 2);
-            }
-
-            // 2. 检查这个坐标是否撞墙 (利用 Grid Size)
-            int col = (int) ((x + GameConfig.TANK_SIZE/2) / GameConfig.GRID_SIZE);
-            int row = (int) ((y + GameConfig.TANK_SIZE/2) / GameConfig.GRID_SIZE);
-
-            if (row < 0 || row >= GameConfig.MAP_ROWS || col < 0 || col >= GameConfig.MAP_COLS) {
-                isSafe = false;
-            } else if (map[row][col] != null && !map[row][col].getType().isTankPassable()) {
-                isSafe = false; // 撞墙了，不安全
-            }
-
-            attempts++;
-        } while (!isSafe && attempts < 50);
-        // --- 结束寻找 ---
-
-        // 生成坦克
+        // 2. 生成具体坦克对象
         try {
             switch (type) {
                 case ENEMY_HEAVY: return new HeavyTank(x, y);
@@ -356,8 +335,7 @@ public class StageGameScene extends BaseGameScene {
             e.printStackTrace();
             return null;
         }
-    }
-    /**
+    }    /**
      * 调整出生位置，确保不在地图障碍物上
      */
     /**
@@ -1143,5 +1121,109 @@ public class StageGameScene extends BaseGameScene {
 
     public List<Bullet> getBullets() {
         return bullets;
+    }
+
+    // StageGameScene 中重写 resetScene（如果需要），或确保 resetModeSpecificData 完整
+    @Override
+    public void resetScene() {
+        super.resetScene(); // 调用父类重置
+        restartGame(); // 重启当前关卡
+    }
+
+    // ==========================================
+    //   新增：智能出生点查找逻辑
+    // ==========================================
+
+    /**
+     * 【核心优化】寻找一个安全的出生坐标
+     * @param isPlayer true表示为玩家寻找(底部/左上)，false表示为敌人寻找(顶部/随机)
+     * @return double[]{x, y} 或者 null (如果找不到)
+     */
+    private double[] findFreeSpawnPoint(boolean isPlayer) {
+        int maxAttempts = 100;
+
+        // 定义出生区域范围
+        // 玩家通常在地图底部出生，敌人通常在顶部或随机
+        int startRow, endRow;
+
+        if (isPlayer) {
+            // 玩家：尝试在地图最后 5 行寻找
+            startRow = GameConfig.MAP_ROWS - 5;
+            endRow = GameConfig.MAP_ROWS;
+        } else {
+            // 敌人：尝试在地图前 2/3 区域寻找，留出底部给玩家缓冲
+            startRow = 0;
+            endRow = GameConfig.MAP_ROWS * 2 / 3;
+        }
+
+        for (int i = 0; i < maxAttempts; i++) {
+            // 1. 随机一个网格坐标
+            int c = random.nextInt(GameConfig.MAP_COLS);
+            int r = startRow + random.nextInt(endRow - startRow);
+
+            // 边界保护
+            if (r < 0) r = 0;
+            if (r >= GameConfig.MAP_ROWS) r = GameConfig.MAP_ROWS - 1;
+
+            // 2. 【第一层检查】检查地形是否空旷
+            // 我们检查 2x2 的小区域（因为坦克体积可能略大于1个格子），或者只检查中心点
+            // 这里严谨一点，检查该位置是否适合放坦克
+            if (isAreaClearForTank(r, c)) {
+
+                // 计算像素坐标
+                double x = c * GameConfig.GRID_SIZE;
+                double y = r * GameConfig.GRID_SIZE;
+
+                // 3. 【第二层检查】检查是否与其他坦克重叠
+                if (!isPositionOccupied(x, y)) {
+                    // 找到完美位置！
+                    return new double[]{x, y};
+                }
+            }
+        }
+
+        return null; // 实在找不到
+    }
+
+    /**
+     * 检查以 (r,c) 为起点的网格区域是否是墙
+     */
+    private boolean isAreaClearForTank(int r, int c) {
+        // 检查当前格子
+        if (!isTilePassable(r, c)) return false;
+
+        // 如果坦克比较大，可能还需要检查右边和下边的格子
+        // 简单起见，我们假设坦克主要占据当前格子，但为了防卡墙，我们要求四周不能全是墙
+        // 这里只检查中心格子必须是 EMPTY 或 GRASS
+        Tile t = map[r][c];
+        return t != null && (t.getType() == model.TileType.EMPTY || t.getType() == model.TileType.GRASS);
+    }
+
+    private boolean isTilePassable(int r, int c) {
+        if (r < 0 || r >= GameConfig.MAP_ROWS || c < 0 || c >= GameConfig.MAP_COLS) return false;
+        Tile t = map[r][c];
+        return t != null && t.getType().isTankPassable();
+    }
+
+    /**
+     * 检查像素坐标 (x,y) 处是否已经有其他坦克占位了
+     */
+    private boolean isPositionOccupied(double x, double y) {
+        double margin = 5.0; // 容错距离
+
+        // 检查玩家
+        if (player != null && player.isAlive()) {
+            double dist = Math.sqrt(Math.pow(x - player.getX(), 2) + Math.pow(y - player.getY(), 2));
+            if (dist < GameConfig.TANK_SIZE + margin) return true;
+        }
+
+        // 检查所有敌人
+        for (Tank enemy : enemyTanks) {
+            if (enemy.isAlive()) {
+                double dist = Math.sqrt(Math.pow(x - enemy.getX(), 2) + Math.pow(y - enemy.getY(), 2));
+                if (dist < GameConfig.TANK_SIZE + margin) return true;
+            }
+        }
+        return false;
     }
 }

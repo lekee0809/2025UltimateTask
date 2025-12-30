@@ -122,4 +122,16 @@ public class PlayerTank extends Tank {
     public boolean isInvincible() {
         return invincible;
     }
+
+    public void setInvincible(boolean invincible) {
+        this.invincible = invincible;
+    }
+
+    public long getInvincibleEndTime() {
+        return invincibleEndTime;
+    }
+
+    public void setInvincibleEndTime(long invincibleEndTime) {
+        this.invincibleEndTime = invincibleEndTime;
+    }
 }

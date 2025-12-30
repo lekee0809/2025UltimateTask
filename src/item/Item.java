@@ -160,6 +160,10 @@ public class Item {
      * 应用道具效果到玩家坦克
      * 返回true表示道具被成功使用
      */
+    /**
+     * 应用道具效果到玩家坦克
+     * 返回true表示道具被成功使用
+     */
     public boolean applyEffect(PlayerTank player) {
         if (!active || isExpired()) return false;
 
@@ -168,7 +172,7 @@ public class Item {
 
         switch (type) {
             case HEAL:
-                // 回血效果：加50血量，不超过最大血量
+                // ... (回血逻辑保持不变) ...
                 int healAmount = 50;
                 int newHealth = Math.min(player.getMaxHealth(), player.getHealth() + healAmount);
                 player.setHealth(newHealth);
@@ -176,14 +180,20 @@ public class Item {
                 return true;
 
             case INVINCIBLE:
-                // 无敌效果：使用枚举中定义的时间
-                player.activateInvincibility(type.getDuration());
-                System.out.println("拾取无敌道具，获得" + (type.getDuration()/1000) + "秒无敌状态");
+                // ================= 修改开始 =================
+                // 原来的代码可能是：player.activateInvincibility(type.getDuration());
+
+                // 【修改 1 & 2】：
+                // 直接调用 activateShield 方法 (这个方法在 Tank 类里，包含了无敌逻辑 + 金圈特效 + 闪烁)
+                // 传入 5.0 表示 5 秒
+                player.activateShield(5.0);
+
+                System.out.println("拾取无敌道具，获得 5 秒无敌护盾！");
+                // ================= 修改结束 =================
                 return true;
 
             case BOMB:
-                // 炸弹效果：由StageGameScene处理全图伤害
-                // 这里只返回true表示拾取了炸弹道具
+                // ... (炸弹逻辑保持不变) ...
                 System.out.println("拾取炸弹道具");
                 return true;
 
@@ -191,7 +201,6 @@ public class Item {
                 return false;
         }
     }
-
     /**
      * 应用炸弹效果到所有敌人坦克
      */
@@ -284,4 +293,65 @@ public class Item {
     public int getEffectDuration() {
         return type.getDuration();
     }
+
+    public void setType(ItemType type) {
+        this.type = type;
+    }
+
+    public void setX(double x) {
+        this.x = x;
+    }
+
+    public void setY(double y) {
+        this.y = y;
+    }
+
+    public void setWidth(double width) {
+        this.width = width;
+    }
+
+    public void setHeight(double height) {
+        this.height = height;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public void setSpawnTime(long spawnTime) {
+        this.spawnTime = spawnTime;
+    }
+
+    public void setAnimationState(ItemAnimationState animationState) {
+        this.animationState = animationState;
+    }
+
+    public void setAlpha(float alpha) {
+        this.alpha = alpha;
+    }
+
+    public void setScale(float scale) {
+        this.scale = scale;
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
+    }
+
+    public long getLastBlinkTime() {
+        return lastBlinkTime;
+    }
+
+    public void setLastBlinkTime(long lastBlinkTime) {
+        this.lastBlinkTime = lastBlinkTime;
+    }
+
+    public long getBlinkInterval() {
+        return blinkInterval;
+    }
+
+    public void setBlinkInterval(long blinkInterval) {
+        this.blinkInterval = blinkInterval;
+    }
 }
+

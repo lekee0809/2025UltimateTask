@@ -179,4 +179,48 @@ public class Bullet extends Entity {
     public int getDamage() {
         return damage;
     }
+
+    public double getSpeedx() {
+        return speedx;
+    }
+
+    public void setSpeedx(double speedx) {
+        this.speedx = speedx;
+    }
+
+    public double getSpeedy() {
+        return speedy;
+    }
+
+    public void setSpeedy(double speedy) {
+        this.speedy = speedy;
+    }
+
+    public int getDirection() {
+        return direction;
+    }
+
+    public void setDirection(int direction) {
+        this.direction = direction;
+    }
+
+    public void setDamage(int damage) {
+        this.damage = damage;
+    }
+
+    public Boolean getEnemy() {
+        return isEnemy;
+    }
+
+    public void setEnemy(Boolean enemy) {
+        isEnemy = enemy;
+    }
+
+    public int getBounceCount() {
+        return bounceCount;
+    }
+
+    public void setBounceCount(int bounceCount) {
+        this.bounceCount = bounceCount;
+    }
 }

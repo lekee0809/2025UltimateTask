@@ -1,6 +1,7 @@
 package controller;
 
 import com.sun.javafx.collections.MappingChange;
+import infra.GameConfig;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -21,21 +22,26 @@ public class InputHandler {
     private BaseGameScene scene;
     // 存储一次性按键监听（KeyCode -> 回调函数）
     private Map<KeyCode, Runnable> onceKeyListeners;
+    private Set<KeyCode> pressedKeys = new HashSet<>();
 
     // --- P1 状态 (WASD + J) ---
     private boolean w, s, a, d, j;
 
     // --- P2 状态 (方向键 + Enter) ---
     private boolean up, down, left, right, enter;
-    // 1. 确认已定义 R 键状态变量
-    private boolean rPressed;
-    private boolean escPressed;
+
+    // --- 全局状态 ---
+    private boolean escPressed; // ESC键状态
+
     public InputHandler(BaseGameScene scene) {
         this.scene = scene;
+        // 初始化一次性按键监听容器（修复NullPointerException）
+        this.onceKeyListeners = new HashMap<>();
     }
 
     public void handleKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
+        pressedKeys.add(code);
         // P1
         if (code == KeyCode.W) w = true;
         else if (code == KeyCode.S) s = true;
@@ -49,13 +55,30 @@ public class InputHandler {
         else if (code == KeyCode.LEFT) left = true;
         else if (code == KeyCode.RIGHT) right = true;
         else if (code == KeyCode.ENTER) enter = true;
-        else if (code == KeyCode.R) rPressed = true;
-        else if (code == KeyCode.ESCAPE) escPressed = true;
 
+            // ESC键（全局暂停）
+        else if (code == KeyCode.ESCAPE) {
+            escPressed = true;
+            // 触发暂停逻辑（通过父类统一处理）
+            if (!GameConfig.isGamePaused()) {
+                scene.pauseGameProcess();
+                // 显示设置窗口
+                new view.SettingsWindow(scene.getPrimaryStage()).show();
+            }
+        }
+
+        // 处理一次性按键监听
+        if (onceKeyListeners.containsKey(code)) {
+            Runnable callback = onceKeyListeners.get(code);
+            if (callback != null) callback.run();
+            onceKeyListeners.remove(code); // 执行后移除
+            event.consume();
+        }
     }
 
     public void handleKeyReleased(KeyEvent event) {
         KeyCode code = event.getCode();
+        pressedKeys.remove(code);
         // P1
         if (code == KeyCode.W) w = false;
         else if (code == KeyCode.S) s = false;
@@ -69,16 +92,18 @@ public class InputHandler {
         else if (code == KeyCode.LEFT) left = false;
         else if (code == KeyCode.RIGHT) right = false;
         else if (code == KeyCode.ENTER) enter = false;
-        else if (code == KeyCode.R) rPressed = false;
-        else if (code == KeyCode.ESCAPE) escPressed = false;
 
+            // ESC键
+        else if (code == KeyCode.ESCAPE) escPressed = false;
     }
-    // 按键状态存储（示例）
-    private Set<KeyCode> pressedKeys = new HashSet<>();
+
     // 重置按键状态
     public void resetKeyStates() {
         pressedKeys.clear();
         // 如需重置其他输入状态（如鼠标位置、按钮点击状态）可在此补充
+        w = s = a = d = j = false;
+        up = down = left = right = enter = false;
+        escPressed = false;
     }
     /**
      * 绑定一次性按键监听（按下指定按键后执行回调，执行后自动解绑）
@@ -86,19 +111,7 @@ public class InputHandler {
      * @param callback 按键按下后执行的回调函数
      */
     public void bindKeyPressOnce(KeyCode keyCode, Runnable callback) {
-        // 1. 先移除该按键已有的一次性监听（避免重复绑定）
-        onceKeyListeners.remove(keyCode);
-
-        // 2. 存储新的一次性回调
         onceKeyListeners.put(keyCode, callback);
-
-        // 3. 绑定临时按键监听（核心：一次性执行后解绑）
-        Scene scene = this.scene.getGameScene();
-        if (scene != null) {
-            // 使用匿名内部类绑定，方便后续移除
-            KeyEventHandler onceKeyHandler = new KeyEventHandler(keyCode);
-            scene.addEventHandler(KeyEvent.KEY_PRESSED, onceKeyHandler);
-        }
     }
 
     /**
@@ -152,9 +165,8 @@ public class InputHandler {
     public boolean isAPressed() { return a; }
     public boolean isDPressed() { return d; }
     public boolean isJPressed() { return j; }
-    // Getter 和 Setter
-    public boolean isRPressed() { return rPressed; }
-    public void setRPressed(boolean rPressed) { this.rPressed = rPressed; }
+
+    // 全局
     public boolean isEscPressed() { return escPressed; }
-    public void setEscPressed(boolean escPressed) { this.escPressed = escPressed; }
+
 }

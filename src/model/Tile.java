@@ -81,4 +81,8 @@ public class Tile {
             this.type = TileType.EMPTY;
         }
     }
+
+    public void setType(TileType type) {
+        this.type = type;
+    }
 }

@@ -15,4 +15,20 @@ public class EnemySpawn {
         this.type = type;
         this.count = count;
     }
+
+    public TankType getType() {
+        return type;
+    }
+
+    public void setType(TankType type) {
+        this.type = type;
+    }
+
+    public int getCount() {
+        return count;
+    }
+
+    public void setCount(int count) {
+        this.count = count;
+    }
 }

@@ -152,4 +152,48 @@ public class ParticleEffect {
             gc.fillOval(x - size/2, y - size/2, size, size);
         }
     }
+
+    public double getX() {
+        return x;
+    }
+
+    public void setX(double x) {
+        this.x = x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
+    public void setY(double y) {
+        this.y = y;
+    }
+
+    public List<Particle> getParticles() {
+        return particles;
+    }
+
+    public void setParticles(List<Particle> particles) {
+        this.particles = particles;
+    }
+
+    public float getDuration() {
+        return duration;
+    }
+
+    public void setDuration(float duration) {
+        this.duration = duration;
+    }
+
+    public float getElapsedTime() {
+        return elapsedTime;
+    }
+
+    public void setElapsedTime(float elapsedTime) {
+        this.elapsedTime = elapsedTime;
+    }
+
+    public void setFinished(boolean finished) {
+        this.finished = finished;
+    }
 }

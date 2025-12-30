@@ -411,7 +411,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
     }
 
     @Override
-    protected void pauseGameProcess() {
+    public void pauseGameProcess() {
         super.pauseGameProcess();
         SoundManager.getInstance().pauseGameMusic();
     }
