@@ -1,6 +1,5 @@
 package map;
 import model.Tile;
-import model.TileType;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
@@ -40,7 +39,7 @@ public class MapTileView extends Canvas {
     /** 加载地形图片 */
     private void loadImages() {
         floorImage = resourceManager.loadImage("images/floor.png");
-        brickImage = resourceManager.loadImage("images/wall.png");
+        brickImage = resourceManager.loadImage("images/brick.png");
         stoneImage = resourceManager.loadImage("images/stone.png");
         waterImage = resourceManager.loadImage("images/water.png");
         grassImage = resourceManager.loadImage("images/grass.png");
