@@ -51,7 +51,7 @@ public class GameConfig {
     // 1_000_000_000 / 60 ≈ 16,666,666 ns
     public static final long TIME_PER_FRAME = 1_000_000_000L / TARGET_FPS;
     // 在 GameConfig 类中添加：
-    public static final int PLAYER_HEALTH = 1000000;
+    public static final int PLAYER_HEALTH = 100;
     public static final int PLAYER_FIRE_COOLDOWN = 50; // 0.05秒一发
     public static final int PLAYER_BULLET_DAMAGE = 10000;
 
