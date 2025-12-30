@@ -46,9 +46,9 @@ public class StartScene {
         startBtn.setStyle(buttonStyle);
         startBtn.setOnAction(e -> {
             // 切换到模式选择界面（替代直接跳游戏场景）
-        ModeSelectScene modeSelectScene = new ModeSelectScene(primaryStage);
-        primaryStage.setScene(modeSelectScene.getScene());
-    });
+            ModeSelectScene modeSelectScene = new ModeSelectScene(primaryStage);
+            primaryStage.setScene(modeSelectScene.getScene());
+        });
 
         // 5. 排行榜按钮
         Button rankBtn = new Button("排行榜");
