@@ -40,13 +40,13 @@ public class MapTileView extends Canvas {
     /** 加载地形图片 */
     private void loadImages() {
         floorImage = resourceManager.loadImage("images/floor.png");
-        brickImage = resourceManager.loadImage("images/Brick.png");
+        brickImage = resourceManager.loadImage("images/wall.png");
         stoneImage = resourceManager.loadImage("images/stone.png");
-        waterImage = resourceManager.loadImage("images/River.png");
+        waterImage = resourceManager.loadImage("images/water.png");
         grassImage = resourceManager.loadImage("images/grass.png");
 
         // 破坏后的砖墙（可选）
-        brokenBrickImage = resourceManager.loadImage("images/floor.png");
+        brokenBrickImage = resourceManager.loadImage("images/wall_broken.png");
     }
 
     /** 渲染整个地图 */
