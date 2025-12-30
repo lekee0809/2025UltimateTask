@@ -1,10 +1,17 @@
 package model;
 
 import infra.GameConfig;
+import javafx.application.Platform;
 import javafx.scene.image.Image;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class PlayerTank extends Tank {
 
+    // ===================== 新增属性 =====================
+    private boolean invincible = false;      // 是否处于无敌状态
+    private long invincibleEndTime = 0;      // 无敌结束的时间戳
     public PlayerTank(double x, double y) {
         super(x, y,
                 TankType.PLAYER_GREEN,
@@ -70,5 +77,49 @@ public class PlayerTank extends Tank {
     @Override
     public String getColorDescription() {
         return "绿色玩家坦克";
+    }
+
+    /**
+     * 激活无敌状态
+     * @param duration 持续时间（毫秒）
+     */
+    public void activateInvincibility(int duration) {
+        this.invincible = true;
+        // 计算结束时间：当前时间 + 持续时间
+        this.invincibleEndTime = System.currentTimeMillis() + duration;
+
+        System.out.println("玩家开启无敌模式！持续: " + duration + "ms");
+
+        // 使用定时器在时间到达后解除无敌
+        // 也可以在 update() 方法中每帧检查时间，这里使用 Timer 比较省资源
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                // 回到 JavaFX 主线程修改状态
+                Platform.runLater(() -> {
+                    if (System.currentTimeMillis() >= invincibleEndTime) {
+                        invincible = false;
+                        System.out.println("无敌状态结束");
+                    }
+                });
+            }
+        }, duration);
+    }
+
+    /**
+     * 重写受伤方法：增加无敌判断
+     */
+    @Override
+    public void takeDamage(int damage) {
+        if (invincible) {
+            System.out.println("玩家处于无敌状态，免除伤害！");
+            return; // 直接返回，不扣血
+        }
+        super.takeDamage(damage); // 调用父类原本的扣血逻辑
+    }
+
+    // ===================== Getter =====================
+    public boolean isInvincible() {
+        return invincible;
     }
 }
