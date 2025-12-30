@@ -10,7 +10,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-
+import item.Item;
+import item.ItemType;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -77,6 +78,11 @@ public class EndlessGameScene extends BaseGameScene {
         enemyTanks.clear();
         bullets.clear();
         startWave(currentWave);
+    }
+
+    @Override
+    protected PlayerTank getPlayerTank() {
+        return player;
     }
 
     /**
@@ -213,6 +219,8 @@ public class EndlessGameScene extends BaseGameScene {
     @Override
     protected void updateGameLogic() {
         if (isGameOver) return;
+        // 先调用父类更新道具逻辑
+        super.updateBaseElements();
 
         // 如果达成目标，延迟进入下一波
         if (enemiesKilledInWave >= targetKills && !isWaveClearing) {
@@ -476,6 +484,11 @@ public class EndlessGameScene extends BaseGameScene {
                         if (!e.isAlive()) {
                             score += e.getScoreValue();
                             enemiesKilledInWave++;
+                            // 【新增】触发道具掉落
+                            if (e instanceof EnemyTank) {
+                                itemSpawner.onEnemyDestroyed((EnemyTank) e);
+                            }
+
                             enemyTanks.remove(i);
                         }
                         break; // 一颗子弹只打一个敌人
@@ -484,7 +497,45 @@ public class EndlessGameScene extends BaseGameScene {
             }
         }
     }
+    /**
+     * 处理炸弹效果
+     */
+    @Override
+    protected void handleBombEffect(Item item) {
+        if (item.getType() != ItemType.BOMB) return;
 
+        System.out.println("💣 炸弹爆炸！对全图敌人造成50点伤害");
+
+        // 创建临时列表收集被炸死的敌人
+        List<EnemyTank> killedEnemies = new ArrayList<>();
+
+        // 对当前所有敌人造成伤害
+        for (Tank enemy : enemyTanks) {
+            if (enemy.isAlive()) {
+                enemy.takeDamage(50);
+                System.out.println("  敌方坦克受到炸弹伤害，剩余血量: " + enemy.getHealth());
+
+                // 检查是否被炸死
+                if (!enemy.isAlive()) {
+                    if (enemy instanceof EnemyTank) {
+                        killedEnemies.add((EnemyTank) enemy);
+                    }
+                    // 增加分数和击杀计数
+                    score += enemy.getScoreValue();
+                    enemiesKilledInWave++;
+                    System.out.println("  炸弹击杀敌人，得分: " + enemy.getScoreValue());
+                }
+            }
+        }
+
+        // 触发被炸死敌人的道具掉落
+        for (EnemyTank killedEnemy : killedEnemies) {
+            itemSpawner.onEnemyDestroyed(killedEnemy);
+        }
+
+        // 移除死亡的敌人
+        enemyTanks.removeIf(e -> !e.isAlive());
+    }
     // 简单的坦克防重叠
     private void checkTankTankCollision(Tank t1) {
         // 同样使用 Entity 自带的 intersects 方法
@@ -567,10 +618,12 @@ public class EndlessGameScene extends BaseGameScene {
             spritePainter.drawMapForeground(bulletGc, map);
         }
 
-        // 5. 画 UI / HUD
+// 5. 调用父类绘制道具和粒子特效
+        super.renderBaseElements();
+        // 6. 画 UI / HUD
         drawHUD(bulletGc);
 
-        // 6. 游戏结束画面
+        // 7. 游戏结束画面
         if (isGameOver) {
             drawGameOver(bulletGc);
         }
