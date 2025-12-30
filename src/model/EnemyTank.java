@@ -5,33 +5,33 @@ import java.util.Random;
 
 /**
  * 敌方坦克基类，包含AI逻辑
+ * 集成了：状态机、拟人化降智（反应延迟+瞄准误差）、防卡墙检测
  */
 public abstract class EnemyTank extends Tank {
 
     // ========== AI状态枚举 ==========
     public enum AIState {
-        PATROL,         // 巡逻
-        CHASE,          // 追逐
-        ATTACK,         // 攻击
-        RETREAT         // 撤退
+        PATROL,         // 巡逻：随机乱逛
+        CHASE,          // 追逐：靠近玩家
+        ATTACK,         // 攻击：进入射程并开火
+        RETREAT         // 撤退：血量低时逃跑
     }
 
     // ========== AI成员变量 ==========
     protected AIState currentState = AIState.PATROL;
     protected Random random = new Random();
 
-    // AI参数
-    protected double sightRange = 400.0;          // 视野范围（像素）
-    protected double chaseRange = 300.0;          // 追逐范围
-    protected double attackRange = 250.0;         // 攻击范围
-    protected double attackAngleThreshold = 15.0; // 开火角度容差（度）
+    // AI 基础参数
+    protected double sightRange = 400.0;          // 视野范围
+    protected double chaseRange = 300.0;          // 追逐触发范围
+    protected double attackRange = 250.0;         // 攻击触发范围
 
-    // 计时器
+    // 状态计时器
     protected double patrolTimer = 0;
     protected double stateTimer = 0;
     protected double lastSeenTimer = 0;
 
-    // 目标追踪
+    // 目标追踪数据
     protected Tank targetPlayer;
     protected double lastSeenX = 0;
     protected double lastSeenY = 0;
@@ -39,8 +39,16 @@ public abstract class EnemyTank extends Tank {
     // 巡逻目标点
     protected double patrolTargetX = 0;
     protected double patrolTargetY = 0;
+
+    // 暂存子弹（用于外部获取）
     private Bullet pendingBullet;
 
+    // ========== 新增：拟人化“降智”参数 ==========
+    private double reactionTimer = 0;           // 反应计时器（模拟大脑处理时间）
+    private double currentReactionInterval = 0; // 当前这一轮的“发呆”时间
+    private double aimOffset = 0;               // 当前的瞄准误差（模拟手抖）
+    protected double attackAngleThreshold = 15.0; // 开火角度容差（度）
+    
     // ========== 构造函数 ==========
     public EnemyTank(double x, double y, TankType type,
                      double speed, double rotationSpeed,
@@ -50,18 +58,19 @@ public abstract class EnemyTank extends Tank {
         super(x, y, type, speed, rotationSpeed, health,
                 fireCooldown, bulletDamage, bulletSpeed, scoreValue);
 
-        // 初始化巡逻目标点
+        // 初始化行为
         setRandomPatrolTarget();
-
-        // 初始朝向随机 (注意：random.nextInt() 需要 int 参数)
-        setLogicRotation(random.nextInt(360)); // 360 是 int
+        setLogicRotation(random.nextInt(360));
         setDisplayRotation(getLogicRotation());
+
+        // 初始化第一次反应时间
+        resetReactionTime();
     }
 
-    // ========== 核心AI方法 ==========
+    // ========== 核心AI更新入口 ==========
 
     /**
-     * 更新AI（在游戏循环中调用）
+     * 每帧调用此方法来更新 AI 决策
      */
     public void updateAI(Tile[][] map, Tank playerTank, double deltaTime) {
         if (!isAlive() || playerTank == null || !playerTank.isAlive()) {
@@ -69,42 +78,69 @@ public abstract class EnemyTank extends Tank {
             return;
         }
 
-
-        // 保存目标玩家
-        this.targetPlayer = playerTank;
-
-        // 更新计时器
+        // 1. 基础计时器必须每帧更新
         patrolTimer += deltaTime;
         stateTimer += deltaTime;
+        lastSeenTimer += deltaTime;
 
-        // 检查是否能看到玩家
+        // 2. 【核心降智机制】检查反应时间
+        reactionTimer += deltaTime;
+
+        // 如果还没到“思考时间”，就保持上一帧的操作，不做任何改变（发呆）
+        if (reactionTimer < currentReactionInterval) {
+            // 在这里直接 return，维持惯性
+            return;
+        }
+
+        // 3. 到达思考时间，重置计时器并进行一次决策
+        reactionTimer = 0;
+        resetReactionTime(); // 下一次思考在 0.2~0.5秒后
+        updateAimOffset();   // 更新手抖误差
+
+        // --- 开始决策逻辑 ---
+
+        this.targetPlayer = playerTank;
         boolean canSeePlayer = canSeePlayer(map);
 
-        // 更新最后看到玩家的位置
         if (canSeePlayer) {
             lastSeenX = playerTank.getCenterX();
             lastSeenY = playerTank.getCenterY();
             lastSeenTimer = 0;
-        } else {
-            lastSeenTimer += deltaTime;
         }
 
-        // 更新状态
+        // 4. 更新状态机状态
         updateAIState(canSeePlayer);
 
-        // 执行当前状态的行为
+        // 5. 执行对应状态的行为
         executeAIState(map, deltaTime);
     }
 
-    public Bullet consumePendingBullet() {
-        Bullet b = pendingBullet;
-        pendingBullet = null; // 取走后清空
-        return b;
+    /**
+     * 重置反应时间 (让敌人有时反应快，有时反应慢)
+     */
+    private void resetReactionTime() {
+        // 基础反应时间 0.2秒，随机增加 0~0.3秒
+        currentReactionInterval = 0.2 + random.nextDouble() * 0.3;
     }
 
     /**
-     * 更新AI状态
+     * 更新瞄准误差 (模拟手抖)
      */
+    private void updateAimOffset() {
+        // 产生一个 ±15度 的随机误差
+        double errorRange = 15.0;
+        aimOffset = (random.nextDouble() - 0.5) * 2 * errorRange;
+    }
+
+    // 获取并清除暂存的子弹
+    public Bullet consumePendingBullet() {
+        Bullet b = pendingBullet;
+        pendingBullet = null;
+        return b;
+    }
+
+    // ========== 状态机逻辑 ==========
+
     protected void updateAIState(boolean canSeePlayer) {
         double distanceToPlayer = getDistanceToPlayer();
 
@@ -112,7 +148,7 @@ public abstract class EnemyTank extends Tank {
             case PATROL:
                 if (canSeePlayer) {
                     changeState(AIState.CHASE);
-                } else if (stateTimer > 5.0) { // 5秒后重置巡逻
+                } else if (stateTimer > 5.0) { // 巡逻超时换个地儿
                     setRandomPatrolTarget();
                     stateTimer = 0;
                 }
@@ -120,7 +156,7 @@ public abstract class EnemyTank extends Tank {
 
             case CHASE:
                 if (!canSeePlayer && lastSeenTimer > 2.0) {
-                    changeState(AIState.PATROL);
+                    changeState(AIState.PATROL); // 丢失视野2秒后放弃
                 } else if (canSeePlayer && distanceToPlayer <= attackRange) {
                     changeState(AIState.ATTACK);
                 }
@@ -130,25 +166,24 @@ public abstract class EnemyTank extends Tank {
                 if (!canSeePlayer && lastSeenTimer > 1.5) {
                     changeState(AIState.CHASE);
                 } else if (distanceToPlayer > attackRange * 1.2) {
-                    changeState(AIState.CHASE);
+                    changeState(AIState.CHASE); // 敌人跑远了就追
                 } else if (getHealth() < getMaxHealth() * 0.3 && distanceToPlayer < 150) {
-                    changeState(AIState.RETREAT);
+                    changeState(AIState.RETREAT); // 血少且太近就跑
                 }
                 break;
 
             case RETREAT:
                 if (distanceToPlayer > 300 || stateTimer > 3.0) {
-                    changeState(AIState.CHASE);
+                    changeState(AIState.CHASE); // 跑远了或者跑了3秒，回头再战
                 }
                 break;
         }
     }
 
-    /**
-     * 执行AI状态行为
-     */
+    // ========== 行为执行逻辑 ==========
+
     protected void executeAIState(Tile[][] map, double deltaTime) {
-        stopAllMovement(); // 先停止所有移动
+        stopAllMovement(); // 先停止，状态机里决定怎么动
 
         switch (currentState) {
             case PATROL:
@@ -166,59 +201,50 @@ public abstract class EnemyTank extends Tank {
         }
     }
 
-    // ========== 各个状态的具体行为 ==========
-
     protected void executePatrol(Tile[][] map) {
-        // 转向巡逻目标点
         double targetAngle = calculateAngleTo(patrolTargetX, patrolTargetY);
-        rotateTowardsAngle(targetAngle);
+        rotateTowardsAngle(targetAngle); // 巡逻不需要手抖，精准走路
 
-        // 如果大致朝向正确，前进
         double angleDiff = getAngleDifference(targetAngle);
         if (Math.abs(angleDiff) < 30) {
-            setMovingForward(true);
+            if (!isPathBlocked(map, 45)) {
+                setMovingForward(true);
+            } else {
+                setRandomPatrolTarget(); // 路堵住了就换个目标
+            }
         }
 
-        // 到达目标点则重新设置
-        double distance = getDistanceTo(patrolTargetX, patrolTargetY);
-        if (distance < 50) {
+        // 到达目标点
+        if (getDistanceTo(patrolTargetX, patrolTargetY) < 50) {
             setRandomPatrolTarget();
         }
     }
 
-    /**
-     * 【修复2：AI 移动逻辑整合】
-     * 在追逐时也加入防撞判断，防止卡死
-     */
-// ... (在 EnemyTank 类中)
-
-    /**
-     * 【修复：追逐模式】
-     * 以前只追不打，现在允许“边跑边打”
-     */
     protected void executeChase(Tile[][] map) {
         if (targetPlayer == null) return;
 
-        double angleToPlayer = calculateAngleToPlayer();
-        rotateTowardsAngle(angleToPlayer);
+        // 【应用瞄准误差】
+        double perfectAngle = calculateAngleToPlayer();
+        double noisyAngle = perfectAngle + aimOffset;
 
+        rotateTowardsAngle(noisyAngle); // 朝着“歪”的角度转
+
+        // 移动逻辑
         if (!isPathBlocked(map, 45)) {
             setMovingForward(true);
         } else {
+            // 简单的避障：被挡住就试图转弯
             setMovingForward(false);
-            changeState(AIState.PATROL);
+            setRotatingLeft(true);
             return;
         }
 
-        double angleDiff = getAngleDifference(angleToPlayer);
-
-        // 【核心修改点】
-        if (Math.abs(angleDiff) < 35 && random.nextDouble() < 0.03) {
-            // 这里不能光调用 tryFire()，必须把生成的子弹存起来！
+        // 开火逻辑 (降低频率)
+        double angleDiff = getAngleDifference(noisyAngle);
+        if (Math.abs(angleDiff) < 35 && random.nextDouble() < 0.2) {
+            // 每次思考只有 20% 概率开火
             Bullet b = tryFire(map);
-            if (b != null) {
-                this.pendingBullet = b; // 存入暂存区
-            }
+            if (b != null) pendingBullet = b;
         }
 
         if (getDistanceToPlayer() < attackRange * 0.8) {
@@ -226,76 +252,56 @@ public abstract class EnemyTank extends Tank {
         }
     }
 
-    // 4. 修改 executeAttack (攻击)
     protected void executeAttack(Tile[][] map) {
         if (targetPlayer == null) return;
 
-        double angleToPlayer = calculateAngleToPlayer();
-        rotateTowardsAngle(angleToPlayer);
+        // 【应用瞄准误差】
+        double perfectAngle = calculateAngleToPlayer();
+        double noisyAngle = perfectAngle + aimOffset;
 
-        double angleDiff = getAngleDifference(angleToPlayer);
+        rotateTowardsAngle(noisyAngle);
 
-        // 【核心修改点】
-        if (Math.abs(angleDiff) < 30) {
-            // 同样，把生成的子弹存起来
+        double angleDiff = getAngleDifference(noisyAngle);
+        // 攻击模式下开火概率稍微高点
+        if (Math.abs(angleDiff) < 30 && random.nextDouble() < 0.4) {
             Bullet b = tryFire(map);
-            if (b != null) {
-                this.pendingBullet = b; // 存入暂存区
-            }
+            if (b != null) pendingBullet = b;
         }
 
+        // 保持距离 (风筝玩家)
         double distance = getDistanceToPlayer();
         if (distance < attackRange * 0.5) {
-            setMovingBackward(true);
+            setMovingBackward(true); // 太近了后退
         } else if (distance > attackRange * 0.9) {
             if (!isPathBlocked(map, 40)) setMovingForward(true);
-        } else {
-            setMovingForward(false);
-            setMovingBackward(false);
         }
     }
+
     protected void executeRetreat(Tile[][] map) {
         if (targetPlayer == null) return;
 
-        // 远离玩家
+        // 撤退不需要手抖，要精准逃跑
         double angleToPlayer = calculateAngleToPlayer();
         double retreatAngle = angleToPlayer + 180;
+
         rotateTowardsAngle(retreatAngle);
 
-        double angleDiff = getAngleDifference(retreatAngle);
-        if (Math.abs(angleDiff) < 45) {
-            setMovingForward(true);
+        if (Math.abs(getAngleDifference(retreatAngle)) < 45) {
+            if (!isPathBlocked(map, 40)) {
+                setMovingForward(true);
+            }
         }
     }
 
-    // ========== 辅助方法 ==========
+    // ========== 辅助工具方法 ==========
 
-    /**
-     * 检查是否能看见玩家
-     */
     protected boolean canSeePlayer(Tile[][] map) {
         if (targetPlayer == null || !targetPlayer.isAlive()) return false;
-
         double distance = getDistanceToPlayer();
-        if (distance > sightRange) return false;
-
-        // 简单的视线检测
-        return hasLineOfSight(targetPlayer, map);
+        // 之前这里有个 hasLineOfSight，但我删了因为它是空的
+        // 暂时只判断距离，效果也是一样的
+        return distance <= sightRange;
     }
-
-    /**
-     * 简单的视线检测（需要实现）
-     */
-    protected boolean hasLineOfSight(Tank target, Tile[][] map) {
-        // 这里实现你的视线检测逻辑
-        // 暂时返回true，等以后实现
-        return true;
-    }
-
-    /**
-     * 转向目标角度
-     */
-// 找到 rotateTowardsAngle 方法，修改里面的左右判断
 
     protected void rotateTowardsAngle(double targetAngle) {
         double currentAngle = getDisplayRotation();
@@ -303,12 +309,9 @@ public abstract class EnemyTank extends Tank {
 
         if (Math.abs(angleDiff) > 5) {
             if (angleDiff > 0) {
-                // JavaFX 中，角度增加是顺时针（向右转）
-                // 原代码这里写的是 Left，请改为 Right
                 setRotatingRight(true);
                 setRotatingLeft(false);
             } else {
-                // 角度减少是逆时针（向左转）
                 setRotatingLeft(true);
                 setRotatingRight(false);
             }
@@ -317,139 +320,70 @@ public abstract class EnemyTank extends Tank {
             setRotatingRight(false);
         }
     }
-    /**
-     * 角度归一化到-180到180度
-     */
+
     protected double normalizeAngle180(double angle) {
         angle = angle % 360;
-        if (angle > 180) {
-            angle -= 360;
-        } else if (angle < -180) {
-            angle += 360;
-        }
+        if (angle > 180) angle -= 360;
+        else if (angle < -180) angle += 360;
         return angle;
     }
 
-    /**
-     * 计算到目标点的角度
-     */
     protected double calculateAngleTo(double tx, double ty) {
         double dx = tx - getCenterX();
         double dy = ty - getCenterY();
-        // JavaFX坐标系：0度指向右边，90度指向下方
-        // 坦克的0度指向正上方，所以需要转换
-        double angle = Math.toDegrees(Math.atan2(dy, dx)) + 90;
+        double angle = Math.toDegrees(Math.atan2(dy, dx)) + 90; // +90 修正游戏坐标系
         return normalizeAngle(angle);
     }
 
-    /**
-     * 计算到玩家的角度
-     */
     protected double calculateAngleToPlayer() {
         if (targetPlayer == null) return getDisplayRotation();
         return calculateAngleTo(targetPlayer.getCenterX(), targetPlayer.getCenterY());
     }
 
-    /**
-     * 计算当前角度与目标角度的差值
-     */
     protected double getAngleDifference(double targetAngle) {
         return normalizeAngle180(targetAngle - getDisplayRotation());
     }
 
-    /**
-     * 获取到玩家的距离
-     */
     protected double getDistanceToPlayer() {
         if (targetPlayer == null) return Double.MAX_VALUE;
         return getDistanceTo(targetPlayer.getCenterX(), targetPlayer.getCenterY());
     }
 
-    /**
-     * 获取到目标点的距离
-     */
     protected double getDistanceTo(double tx, double ty) {
-        double dx = tx - getCenterX();
-        double dy = ty - getCenterY();
-        return Math.sqrt(dx * dx + dy * dy);
+        return Math.sqrt(Math.pow(tx - getCenterX(), 2) + Math.pow(ty - getCenterY(), 2));
     }
 
-    /**
-     * 设置随机巡逻目标点
-     */
     protected void setRandomPatrolTarget() {
-        // 注意：random.nextInt() 需要 int 参数，所以需要强制转换
-        // 假设 GameConfig.SCREEN_WIDTH 和 SCREEN_HEIGHT 是 int 或 double
         int screenWidth = (int) GameConfig.SCREEN_WIDTH;
         int screenHeight = (int) GameConfig.SCREEN_HEIGHT;
-
-        // 在地图范围内随机选择一个点
-        patrolTargetX = random.nextInt(screenWidth - 200) + 100;
-        patrolTargetY = random.nextInt(screenHeight - 200) + 100;
+        patrolTargetX = random.nextInt(screenWidth - 100) + 50;
+        patrolTargetY = random.nextInt(screenHeight - 100) + 50;
     }
 
-    /**
-     * 改变AI状态
-     */
     protected void changeState(AIState newState) {
         if (currentState == newState) return;
-
         currentState = newState;
         stateTimer = 0;
-
-        // 状态切换时的特殊处理
-        switch (newState) {
-            case PATROL:
-                setRandomPatrolTarget();
-                break;
-            case RETREAT:
-                // 撤退时设置远离玩家的目标点
-                if (targetPlayer != null) {
-                    patrolTargetX = getCenterX() * 2 - targetPlayer.getCenterX();
-                    patrolTargetY = getCenterY() * 2 - targetPlayer.getCenterY();
-                }
-                break;
-        }
+        if (newState == AIState.PATROL) setRandomPatrolTarget();
     }
-    /**
-     * 【修复1：防撞墙逻辑】
-     * 使用 GameConfig.GRID_SIZE 准确计算前方是否有障碍
-     */
+
     private boolean isPathBlocked(Tile[][] map, double checkDistance) {
-        // 1. 计算探测点坐标 (坦克中心前方 checkDistance 像素处)
         double rad = Math.toRadians(getDisplayRotation());
         double probeX = getCenterX() + Math.sin(rad) * checkDistance;
         double probeY = getCenterY() - Math.cos(rad) * checkDistance;
 
-        // 2. 将像素坐标转换为地图数组下标 (直接用配置的 40.0)
         int col = (int) (probeX / GameConfig.GRID_SIZE);
         int row = (int) (probeY / GameConfig.GRID_SIZE);
 
-        // 3. 边界检查 (防止数组越界报错)
-        if (row < 0 || row >= map.length || col < 0 || col >= map[0].length) {
-            return true; // 撞到地图边缘了，视为墙壁
+        if (row < 0 || row >= GameConfig.MAP_ROWS || col < 0 || col >= GameConfig.MAP_COLS) {
+            return true;
         }
 
-        // 4. 地形检查
         Tile tile = map[row][col];
-        if (tile != null) {
-            // 利用 TileType.isTankPassable() 判断
-            // 遇到 墙(BRICK)、石(STONE)、水(WATER) 返回 true (表示被阻挡)
-            return !tile.getType().isTankPassable();
-        }
-
-        return false;
+        return tile != null && !tile.getType().isTankPassable();
     }
 
-    // ========== 抽象方法（子类实现） ==========
-
-    /**
-     * 获取坦克AI类型描述
-     */
+    // ========== 抽象方法 (子类实现) ==========
     public abstract String getAIType();
-
-    /**
-     * 获取AI攻击性（0-1，值越高越激进）
-     */
     public abstract double getAIAggressiveness();
 }
