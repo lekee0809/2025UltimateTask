@@ -17,17 +17,17 @@ public class MapFactory_Backup {
         // 第 2+ 关：50% 概率是大战场，50% 概率是巷战 (Maze)
 
         if (level == 1) {
-            return new BattlefieldMapGenerator().generate();
+            return new BattlefieldMapGenerator11111().generate();
         } else {
             // 随机决定
             if (Math.random() < 0.5) {
                 // 生成大战场
-                return new BattlefieldMapGenerator().generate();
+                return new BattlefieldMapGenerator11111().generate();
             } else {
                 // 生成巷战 (迷宫)
                 // 随着关卡增加，我们可以让迷宫更难 (例如 blockSize=1 的细路)
                 // 这里暂时保持默认
-                return new MazeDigger().generate();
+                return new MazeDigger1111().generate();
             }
         }
     }

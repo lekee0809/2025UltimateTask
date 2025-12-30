@@ -9,7 +9,7 @@ import infra.GameConfig;
  * 1. 解决空旷问题：增加小型掩体、散兵坑、废墟密度。
  * 2. 战术性增强：不再是大片空地，而是充满了可以躲避的障碍。
  */
-public class BattlefieldMapGenerator {
+public class BattlefieldMapGenerator11111 {
 
     private int[][] map;
     private Random random = new Random();
