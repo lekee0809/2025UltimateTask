@@ -1,34 +1,24 @@
 package game;
 
+import infra.GameConfig;
 import javafx.application.Application;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
-<<<<<<< HEAD
-import view.StartScene;
-import view.ModeSelectScene; // 如果StartScene会跳转到ModeSelectScene
-=======
 import view.SoundManager;
 import view.StageGameScene;
 import view.TwoPlayerGameScene;
 import view.EndlessGameScene; // 【新增】记得导入你的无尽模式场景类
->>>>>>> b987339d6cdb357ba125aeffc73c53e7d52be0a4
 
 public class AppLauncher extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-<<<<<<< HEAD
-        // 1. 直接创建并使用 StartScene（最简洁的方案）
-        StartScene startScene = new StartScene(primaryStage);
-
-        // 2. 设置舞台
-        primaryStage.setTitle("坦克大战 2025");
-        primaryStage.setScene(startScene.getScene());
-        primaryStage.setResizable(false); // 可选：固定窗口大小
-        primaryStage.show();
-
-        // 3. 如果StartScene需要知道如何切换场景，可以通过构造函数传入回调
-        // 或者保持现有设计，让StartScene自己创建ModeSelectScene
-=======
         // 1. 创建主菜单布局
         VBox menuRoot = new VBox(20);
         menuRoot.setAlignment(Pos.CENTER);
@@ -109,7 +99,6 @@ public class AppLauncher extends Application {
         btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #bdc3c7; -fx-background-radius: 10;"));
         btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #ecf0f1; -fx-background-radius: 10;"));
         return btn;
->>>>>>> b987339d6cdb357ba125aeffc73c53e7d52be0a4
     }
 
     public static void main(String[] args) {
