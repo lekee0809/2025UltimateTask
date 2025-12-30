@@ -48,7 +48,7 @@ public abstract class EnemyTank extends Tank {
     private double currentReactionInterval = 0; // 当前这一轮的“发呆”时间
     private double aimOffset = 0;               // 当前的瞄准误差（模拟手抖）
     protected double attackAngleThreshold = 15.0; // 开火角度容差（度）
-    
+
     // ========== 构造函数 ==========
     public EnemyTank(double x, double y, TankType type,
                      double speed, double rotationSpeed,

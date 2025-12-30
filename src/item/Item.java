@@ -284,4 +284,65 @@ public class Item {
     public int getEffectDuration() {
         return type.getDuration();
     }
+
+    public void setType(ItemType type) {
+        this.type = type;
+    }
+
+    public void setX(double x) {
+        this.x = x;
+    }
+
+    public void setY(double y) {
+        this.y = y;
+    }
+
+    public void setWidth(double width) {
+        this.width = width;
+    }
+
+    public void setHeight(double height) {
+        this.height = height;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public void setSpawnTime(long spawnTime) {
+        this.spawnTime = spawnTime;
+    }
+
+    public void setAnimationState(ItemAnimationState animationState) {
+        this.animationState = animationState;
+    }
+
+    public void setAlpha(float alpha) {
+        this.alpha = alpha;
+    }
+
+    public void setScale(float scale) {
+        this.scale = scale;
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
+    }
+
+    public long getLastBlinkTime() {
+        return lastBlinkTime;
+    }
+
+    public void setLastBlinkTime(long lastBlinkTime) {
+        this.lastBlinkTime = lastBlinkTime;
+    }
+
+    public long getBlinkInterval() {
+        return blinkInterval;
+    }
+
+    public void setBlinkInterval(long blinkInterval) {
+        this.blinkInterval = blinkInterval;
+    }
 }
+
