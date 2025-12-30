@@ -1,6 +1,11 @@
 package view;
 
 import game.AppLauncher;
+import item.Item;
+import item.ItemSpawner;
+import item.ItemType;
+import item.ParticleEffect;
+import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
@@ -22,6 +27,7 @@ import map.MapTileView;
 import model.*;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +52,8 @@ public class TwoPlayerGameScene extends BaseGameScene {
     private MapTileView mapTileView;
     private static final int TWO_PLAYER_LEVEL = 1;
     private Scene scene;
+    private ItemSpawner itemSpawner;
+    private List<ParticleEffect> particleEffects;
 
     // 修复1：构造代码块（优先于所有构造方法执行，强制初始化mapTileView）
     {
@@ -63,8 +71,96 @@ public class TwoPlayerGameScene extends BaseGameScene {
         // 新增：首次进入双人模式时，播放背景音乐
         settingsWindow = new SettingsWindow(primaryStage);
         SoundManager.getInstance().playGameMusic();
+        // 新增：初始化道具系统
+        itemSpawner = new ItemSpawner();
+        particleEffects = new ArrayList<>();
+        // 新增：启动道具生成
+        scheduleItemSpawn();
+    }
+    // 3. 添加道具更新方法
+    private void updateItems() {
+        // 检查玩家1的道具拾取
+        Iterator<Item> iterator = itemSpawner.getActiveItems().iterator();
+        while (iterator.hasNext()) {
+            Item item = iterator.next();
+
+            // 更新道具动画
+            item.updateAnimation();
+
+            // 检查玩家1是否拾取道具
+            if (player1.isAlive() && item.checkCollision(player1)) {
+                if (item.applyEffect((PlayerTank) player1)) {
+                    // 生成金色粒子特效
+                    particleEffects.add(new ParticleEffect(
+                            item.getX() + item.getWidth()/2,
+                            item.getY() + item.getHeight()/2,
+                            15, Color.GOLD, 0.5f
+                    ));
+
+                    // 如果是炸弹，对玩家2造成伤害
+                    if (item.getType() == ItemType.BOMB) {
+                        applyBombEffect(item, player1);
+                    }
+
+                    System.out.println("🎁 玩家1拾取道具: " + item.getType().getName());
+                    iterator.remove();
+                    continue;
+                }
+            }
+
+            // 检查玩家2是否拾取道具
+            if (player2.isAlive() && item.checkCollision(player2)) {
+                if (item.applyEffect((PlayerTank) player2)) {
+                    // 生成金色粒子特效
+                    particleEffects.add(new ParticleEffect(
+                            item.getX() + item.getWidth()/2,
+                            item.getY() + item.getHeight()/2,
+                            15, Color.GOLD, 0.5f
+                    ));
+
+                    // 如果是炸弹，对玩家1造成伤害
+                    if (item.getType() == ItemType.BOMB) {
+                        applyBombEffect(item, player2);
+                    }
+
+                    System.out.println("🎁 玩家2拾取道具: " + item.getType().getName());
+                    iterator.remove();
+                }
+            }
+
+            // 检查道具是否过期
+            if (item.isExpired()) {
+                iterator.remove();
+                System.out.println("⏰ 道具过期消失: " + item.getType().getName());
+            }
+        }
+
+        // 更新粒子特效
+        particleEffects.removeIf(ParticleEffect::isFinished);
+        for (ParticleEffect effect : particleEffects) {
+            effect.update(0.016f); // 约60FPS
+        }
     }
 
+    // 4. 添加炸弹效果处理方法
+    private void applyBombEffect(Item item, Tank picker) {
+        // 双人模式中，炸弹只对对方玩家造成20点伤害
+        if (item.getType() != ItemType.BOMB) return;
+
+        if (picker == player1) {
+            // 玩家1拾取了炸弹，对玩家2造成20点伤害
+            if (player2.isAlive()) {
+                player2.takeDamage(20);
+                System.out.println("💣 玩家1拾取炸弹，对玩家2造成20点伤害");
+            }
+        } else if (picker == player2) {
+            // 玩家2拾取了炸弹，对玩家1造成20点伤害
+            if (player1.isAlive()) {
+                player1.takeDamage(20);
+                System.out.println("💣 玩家2拾取炸弹，对玩家1造成20点伤害");
+            }
+        }
+    }
     private void initScene() {
         StackPane root = new StackPane();
         Canvas tankCanvas = new Canvas(GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
@@ -95,6 +191,8 @@ public class TwoPlayerGameScene extends BaseGameScene {
         convertMapModelToTileArray();
         mapTileView.render(twoPlayerMap); // 此时绝对非null，不会报错
         initTwoPlayers();
+        // 新增：启动道具生成
+        scheduleItemSpawn();
     }
 
     @Override
@@ -104,6 +202,9 @@ public class TwoPlayerGameScene extends BaseGameScene {
         player1Lives = 3;
         player2Lives = 3;
         bulletList.clear();
+        // 新增：清理道具
+        itemSpawner.clear();
+        particleEffects.clear();
         initTwoPlayers();
         twoPlayerMap.reset(TWO_PLAYER_LEVEL);
         convertMapModelToTileArray();
@@ -132,6 +233,65 @@ public class TwoPlayerGameScene extends BaseGameScene {
         bulletList.add(bullet);
 
         SoundManager.getInstance().playSoundEffect("shoot");
+    }
+    // 8. 添加双人模式道具生成逻辑（例如通过随机事件生成）
+    private void spawnItemRandomly() {
+        // 双人模式的道具生成逻辑
+        // 例如：每30秒有一定概率生成道具
+        long currentTime = System.currentTimeMillis();
+        long lastSpawnTime = 0;
+
+        if (currentTime - lastSpawnTime > 30000) { // 30秒
+            if (Math.random() < 0.3) { // 30%概率
+                double x = Math.random() * (GameConfig.SCREEN_WIDTH - GameConfig.GRID_SIZE);
+                double y = Math.random() * (GameConfig.SCREEN_HEIGHT - GameConfig.GRID_SIZE);
+                Item item = Item.createRandomItem(x, y);
+
+                // 需要修改ItemSpawner以支持手动添加道具
+                // 这里先简单添加到activeItems（需要修改ItemSpawner的访问权限）
+                itemSpawner.getActiveItems().add(item);
+                lastSpawnTime = currentTime;
+            }
+        }
+    }
+    // 添加计时器定期生成道具
+    private void scheduleItemSpawn() {
+        // 使用 JavaFX 的 Timeline 代替 AnimationTimer，更简单
+        javafx.animation.Timeline timeline = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(
+                        javafx.util.Duration.seconds(20 + Math.random() * 10), // 20-30秒间隔
+                        e -> spawnRandomItem()
+                )
+        );
+        timeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        timeline.play();
+    }
+
+    private void spawnRandomItem() {
+        if (gameOver) return;
+
+        // 在地图上随机位置生成道具
+        double x = 50 + Math.random() * (GameConfig.SCREEN_WIDTH - 100);
+        double y = 50 + Math.random() * (GameConfig.SCREEN_HEIGHT - 100);
+
+        // 随机选择道具类型
+        ItemType type = getRandomItemType();
+
+        // 生成道具
+        itemSpawner.spawnItemAt(x, y, type);
+        System.out.println("🎁 双人模式生成随机道具: " + type.getName() + " 在位置 (" + x + ", " + y + ")");
+    }
+
+    // 添加辅助方法获取随机道具类型
+    private ItemType getRandomItemType() {
+        double rand = Math.random();
+        if (rand < 0.4) {
+            return ItemType.HEAL;           // 40% 概率
+        } else if (rand < 0.7) {
+            return ItemType.INVINCIBLE;     // 30% 概率
+        } else {
+            return ItemType.BOMB;           // 30% 概率
+        }
     }
 
     private void checkCollisions() {
@@ -306,6 +466,8 @@ public class TwoPlayerGameScene extends BaseGameScene {
         checkTankDeathAndRebirth();
         checkGameOver();
         mapTileView.render(twoPlayerMap);
+        // 新增：更新道具系统
+        updateItems();
     }
 
     @Override
@@ -324,6 +486,15 @@ public class TwoPlayerGameScene extends BaseGameScene {
         if (player2.isAlive()) player2.draw(tankGc);
         for (Bullet bullet : bulletList) {
             if (bullet.alive) bullet.draw(bulletGc);
+        }
+        // 新增：绘制道具
+        for (Item item : itemSpawner.getActiveItems()) {
+            spritePainter.drawItem(tankGc, item);
+        }
+
+        // 新增：绘制粒子特效
+        for (ParticleEffect effect : particleEffects) {
+            spritePainter.drawParticleEffect(bulletGc, effect);
         }
         drawPlayerLives(tankGc);
         if (gameOver) drawGameOverUI(tankGc);
