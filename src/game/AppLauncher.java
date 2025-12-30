@@ -13,7 +13,9 @@ import javafx.stage.Stage;
 import view.SoundManager;
 import view.StageGameScene;
 import view.TwoPlayerGameScene;
-import view.EndlessGameScene; // 【新增】记得导入你的无尽模式场景类
+import view.EndlessGameScene;
+// 导入排行榜选择界面（请确保该类的包名与你的项目一致，若不在默认包，需补充完整包名）
+import ranking.RankingSelectUI;
 
 public class AppLauncher extends Application {
 
@@ -41,15 +43,11 @@ public class AppLauncher extends Application {
             }
         });
 
-        // ================= 【新增开始】 =================
-        // 3.5 按钮：无尽模式
+        // ================= 【新增：无尽模式】 =================
         Button btnEndlessMode = createMenuButton("无尽模式 (Endless Mode)");
-
         btnEndlessMode.setOnAction(e -> {
             try {
                 System.out.println("正在进入无尽模式...");
-                // 这里需要你创建一个 EndlessGameScene 类
-                // 如果还没有写好，可以先暂时用 StageGameScene 代替测试
                 EndlessGameScene endlessScene = new EndlessGameScene(primaryStage);
                 primaryStage.setScene(endlessScene.getScene());
             } catch (Exception ex) {
@@ -57,7 +55,6 @@ public class AppLauncher extends Application {
                 System.err.println("进入无尽模式失败，请检查 EndlessGameScene 类是否存在！");
             }
         });
-        // ================= 【新增结束】 =================
 
         // 4. 按钮：双人对战
         Button btnPvPMode = createMenuButton("双人对战 (2 Players)");
@@ -71,12 +68,25 @@ public class AppLauncher extends Application {
             }
         });
 
+        // ================= 【核心新增：查看排行榜按钮】 =================
+        // 【核心修改：排行榜按钮点击事件】
+        Button btnRanking = createMenuButton("查看排行榜 (Ranking)");
+        btnRanking.setOnAction(e -> {
+            try {
+                System.out.println("正在打开排行榜选择界面...");
+                // 直接调用普通类的静态方法，无需launch
+                RankingSelectUI.showSelectWindow();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                System.err.println("打开排行榜失败，请检查 RankingSelectUI 类是否存在！");
+            }
+        });
         // 5. 按钮：退出
         Button btnExit = createMenuButton("退出游戏 (Exit)");
         btnExit.setOnAction(e -> System.exit(0));
 
-        // 6. 组装并显示 (注意把 btnEndlessMode 加进去)
-        menuRoot.getChildren().addAll(title, btnStageMode, btnEndlessMode, btnPvPMode, btnExit);
+        // 6. 组装并显示（注意：将 btnRanking 加入布局列表，位置可按需调整）
+        menuRoot.getChildren().addAll(title, btnStageMode, btnEndlessMode, btnPvPMode, btnRanking, btnExit);
 
         Scene menuScene = new Scene(menuRoot, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         primaryStage.setTitle("Tank War 2025");
