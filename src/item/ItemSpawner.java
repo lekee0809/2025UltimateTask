@@ -95,8 +95,14 @@ public class ItemSpawner {
 
             // 3. 检查玩家是否拾取道具
             if (item.checkCollision(player)) {
-                if (item.applyEffect(player)) {
-                    // 添加到拾取列表（用于播放音效和特效）
+                // 【关键修改】炸弹不调用applyEffect，直接标记拾取
+                if (item.getType() == ItemType.BOMB) {
+                    collectedItems.add(item);
+                    iterator.remove();
+                    System.out.println("拾取炸弹道具");
+                }
+                // 其他道具正常调用applyEffect
+                else if (item.applyEffect(player)) {
                     collectedItems.add(item);
                     iterator.remove();
                 }
