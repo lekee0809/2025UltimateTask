@@ -5,11 +5,10 @@ import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.scene.transform.Affine;
 import javafx.scene.transform.Rotate;
-import model.Bullet;
-import model.Tank;
+import model.*;
 import infra.GameConfig;
-import model.Tile;
-import model.TileType;
+import item.Item;
+import item.ParticleEffect;
 
 /**
  * 精灵绘制器 (Canvas版本)
@@ -179,6 +178,17 @@ public class SpritePainter {
 
         // 保存当前的画布状态 (以免旋转影响到后续绘制)
         gc.save();
+        // 如果是玩家且处于无敌状态，改变透明度或添加特效
+        if (tank instanceof PlayerTank && ((PlayerTank) tank).isInvincible()) {
+            // 产生闪烁感：根据时间控制透明度
+            double alpha = 0.5 + 0.4 * Math.sin(System.currentTimeMillis() / 100.0);
+            gc.setGlobalAlpha(alpha);
+
+            // 可以在坦克脚下画一个金色的圆圈作为护盾感
+            gc.setStroke(Color.GOLD);
+            gc.setLineWidth(3);
+            gc.strokeOval(tank.getX() - 5, tank.getY() - 5, tank.getWidth() + 10, tank.getHeight() + 10);
+        }
 
         // 1. 移动画布原点到坦克的【中心点】
         double centerX = tank.getX() + tank.getWidth() / 2;
@@ -209,5 +219,36 @@ public class SpritePainter {
 
         // 恢复画布状态
         gc.restore();
+    }
+    /**
+     * 绘制道具：支持缩放和透明度动画
+     */
+    public void drawItem(GraphicsContext gc, Item item) {
+        if (!item.isActive() || !item.isVisible()) return;
+
+        // 通过 ResourceManager 加载 ItemType 中定义的图片路径
+        Image img = ResourceManager.getInstance().loadImage(item.getType().getImagePath());
+
+        gc.save();
+        // 应用 Item 类计算出的动画属性
+        gc.setGlobalAlpha(item.getAlpha());
+
+        double centerX = item.getX() + item.getWidth() / 2;
+        double centerY = item.getY() + item.getHeight() / 2;
+        double drawW = item.getWidth() * item.getScale();
+        double drawH = item.getHeight() * item.getScale();
+
+        // 居中绘制缩放后的道具
+        gc.drawImage(img, centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+        gc.restore();
+    }
+
+    /**
+     * 绘制粒子特效
+     */
+    public void drawParticleEffect(GraphicsContext gc, ParticleEffect effect) {
+        if (effect != null && !effect.isFinished()) {
+            effect.render(gc);
+        }
     }
 }
