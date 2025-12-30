@@ -311,4 +311,20 @@ public class BattlefieldMapGenerator {
         }
         return visitedCount >= totalWalkable * 0.95;
     }
+
+    public int[][] getMap() {
+        return map;
+    }
+
+    public void setMap(int[][] map) {
+        this.map = map;
+    }
+
+    public Random getRandom() {
+        return random;
+    }
+
+    public void setRandom(Random random) {
+        this.random = random;
+    }
 }

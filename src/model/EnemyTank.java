@@ -386,4 +386,148 @@ public abstract class EnemyTank extends Tank {
     // ========== 抽象方法 (子类实现) ==========
     public abstract String getAIType();
     public abstract double getAIAggressiveness();
+
+    public AIState getCurrentState() {
+        return currentState;
+    }
+
+    public void setCurrentState(AIState currentState) {
+        this.currentState = currentState;
+    }
+
+    public Random getRandom() {
+        return random;
+    }
+
+    public void setRandom(Random random) {
+        this.random = random;
+    }
+
+    public double getSightRange() {
+        return sightRange;
+    }
+
+    public void setSightRange(double sightRange) {
+        this.sightRange = sightRange;
+    }
+
+    public double getChaseRange() {
+        return chaseRange;
+    }
+
+    public void setChaseRange(double chaseRange) {
+        this.chaseRange = chaseRange;
+    }
+
+    public double getAttackRange() {
+        return attackRange;
+    }
+
+    public void setAttackRange(double attackRange) {
+        this.attackRange = attackRange;
+    }
+
+    public double getPatrolTimer() {
+        return patrolTimer;
+    }
+
+    public void setPatrolTimer(double patrolTimer) {
+        this.patrolTimer = patrolTimer;
+    }
+
+    public double getStateTimer() {
+        return stateTimer;
+    }
+
+    public void setStateTimer(double stateTimer) {
+        this.stateTimer = stateTimer;
+    }
+
+    public double getLastSeenTimer() {
+        return lastSeenTimer;
+    }
+
+    public void setLastSeenTimer(double lastSeenTimer) {
+        this.lastSeenTimer = lastSeenTimer;
+    }
+
+    public Tank getTargetPlayer() {
+        return targetPlayer;
+    }
+
+    public void setTargetPlayer(Tank targetPlayer) {
+        this.targetPlayer = targetPlayer;
+    }
+
+    public double getLastSeenX() {
+        return lastSeenX;
+    }
+
+    public void setLastSeenX(double lastSeenX) {
+        this.lastSeenX = lastSeenX;
+    }
+
+    public double getLastSeenY() {
+        return lastSeenY;
+    }
+
+    public void setLastSeenY(double lastSeenY) {
+        this.lastSeenY = lastSeenY;
+    }
+
+    public double getPatrolTargetX() {
+        return patrolTargetX;
+    }
+
+    public void setPatrolTargetX(double patrolTargetX) {
+        this.patrolTargetX = patrolTargetX;
+    }
+
+    public double getPatrolTargetY() {
+        return patrolTargetY;
+    }
+
+    public void setPatrolTargetY(double patrolTargetY) {
+        this.patrolTargetY = patrolTargetY;
+    }
+
+    public Bullet getPendingBullet() {
+        return pendingBullet;
+    }
+
+    public void setPendingBullet(Bullet pendingBullet) {
+        this.pendingBullet = pendingBullet;
+    }
+
+    public double getReactionTimer() {
+        return reactionTimer;
+    }
+
+    public void setReactionTimer(double reactionTimer) {
+        this.reactionTimer = reactionTimer;
+    }
+
+    public double getCurrentReactionInterval() {
+        return currentReactionInterval;
+    }
+
+    public void setCurrentReactionInterval(double currentReactionInterval) {
+        this.currentReactionInterval = currentReactionInterval;
+    }
+
+    public double getAimOffset() {
+        return aimOffset;
+    }
+
+    public void setAimOffset(double aimOffset) {
+        this.aimOffset = aimOffset;
+    }
+
+    public double getAttackAngleThreshold() {
+        return attackAngleThreshold;
+    }
+
+    public void setAttackAngleThreshold(double attackAngleThreshold) {
+        this.attackAngleThreshold = attackAngleThreshold;
+    }
 }

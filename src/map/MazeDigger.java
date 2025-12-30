@@ -276,4 +276,44 @@ public class MazeDigger {
             }
         }
     }
+
+    public int getLogicRows() {
+        return logicRows;
+    }
+
+    public void setLogicRows(int logicRows) {
+        this.logicRows = logicRows;
+    }
+
+    public int getLogicCols() {
+        return logicCols;
+    }
+
+    public void setLogicCols(int logicCols) {
+        this.logicCols = logicCols;
+    }
+
+    public boolean[][] getVisited() {
+        return visited;
+    }
+
+    public void setVisited(boolean[][] visited) {
+        this.visited = visited;
+    }
+
+    public int[][] getMap() {
+        return map;
+    }
+
+    public void setMap(int[][] map) {
+        this.map = map;
+    }
+
+    public int getBlockSize() {
+        return blockSize;
+    }
+
+    public void setBlockSize(int blockSize) {
+        this.blockSize = blockSize;
+    }
 }
