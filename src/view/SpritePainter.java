@@ -3,8 +3,6 @@ package view;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
-import javafx.scene.transform.Affine;
-import javafx.scene.transform.Rotate;
 import model.*;
 import infra.GameConfig;
 import item.Item;
@@ -36,7 +34,7 @@ public class SpritePainter {
             floorImage = resourceManager.loadImage("images/floor.png");
             brickImage = resourceManager.loadImage("images/brick.png");
             stoneImage = resourceManager.loadImage("images/stone.png");
-            waterImage = resourceManager.loadImage("images/river.png");
+            waterImage = resourceManager.loadImage("images/water.png");
             grassImage = resourceManager.loadImage("images/grass.png");
             brokenBrickImage = resourceManager.loadImage("images/floor.png");
         } catch (Exception e) {
