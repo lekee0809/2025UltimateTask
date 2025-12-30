@@ -4,7 +4,7 @@ package map;
  * 地图工厂类
  * 负责根据当前关卡数 (Level) 决定生成哪种类型的地图
  */
-public class MapFactory_Backup {
+public class MapFactory {
 
     /**
      * 根据关卡生成地图
@@ -17,17 +17,17 @@ public class MapFactory_Backup {
         // 第 2+ 关：50% 概率是大战场，50% 概率是巷战 (Maze)
 
         if (level == 1) {
-            return new BattlefieldMapGenerator11111().generate();
+            return new BattlefieldMapGenerator().generate();
         } else {
             // 随机决定
             if (Math.random() < 0.5) {
                 // 生成大战场
-                return new BattlefieldMapGenerator11111().generate();
+                return new BattlefieldMapGenerator().generate();
             } else {
                 // 生成巷战 (迷宫)
                 // 随着关卡增加，我们可以让迷宫更难 (例如 blockSize=1 的细路)
                 // 这里暂时保持默认
-                return new MazeDigger1111().generate();
+                return new MazeDigger().generate();
             }
         }
     }

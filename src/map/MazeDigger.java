@@ -7,7 +7,7 @@ import java.util.*;
  * 通用迷宫生成器
  * 支持：分辨率缩放 (1x1 或 2x2)、部分回路、绝对连通
  */
-public class MazeDigger1111 {
+public class MazeDigger {
 
     // 逻辑网格 (可能比实际地图小)
     private int logicRows;
@@ -25,13 +25,13 @@ public class MazeDigger1111 {
     private static final double STRAIGHT_BLOCK_CHANCE = 0.1; // 直道阻断概率
     private static final double INTERSECTION_BLOCK_CHANCE = 0.2; // 路口碉堡概率
 
-    public MazeDigger1111() {
+    public MazeDigger() {
         // 默认随机：50% 概率生成宽路，50% 概率生成细路
         this.blockSize = Math.random() < 0.5 ? 2 : 1;
     }
 
-    // 允许外部强制指定模式 (例如: new MazeDigger1111(2))
-    public MazeDigger1111(int blockSize) {
+    // 允许外部强制指定模式 (例如: new MazeDigger(2))
+    public MazeDigger(int blockSize) {
         this.blockSize = blockSize;
     }
 
