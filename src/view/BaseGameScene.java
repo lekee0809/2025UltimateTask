@@ -1,5 +1,6 @@
 package view;
 
+import view.SoundManager;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
@@ -275,5 +276,20 @@ public abstract class BaseGameScene {
 
     public double getHEIGHT() {
         return HEIGHT;
+    }
+    // ========== 新增：暂停游戏方法（父类通用实现，移除无效super调用） ==========
+    protected void pauseGameProcess() {
+        if (gameLoop != null) {
+            gameLoop.stop(); // 停止游戏循环
+        }
+        SoundManager.getInstance().pauseBGM(); // 暂停背景音乐
+    }
+
+    // ========== 新增：恢复游戏方法（父类通用实现，移除无效super调用，调整gameOver逻辑） ==========
+    protected void resumeGameProcess() {
+        if (gameLoop != null) {
+            gameLoop.start(); // 启动游戏循环（子类可根据gameOver重写控制）
+        }
+        SoundManager.getInstance().playBGM(); // 恢复背景音乐
     }
 }
