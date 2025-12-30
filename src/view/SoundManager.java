@@ -15,6 +15,11 @@ public class SoundManager {
     private MediaPlayer gameMusicPlayer;  // 游戏内音乐播放器（game.wav，全局唯一）
     private Map<String, String> soundMap; // 音效/音乐路径映射
 
+    // ========== 新增：音量控制成员变量 ==========
+    private double bgmVolume = 0.7;      // 背景音乐音量（0-1）
+    private double sfxVolume = 0.8;      // 音效音量（0-1）
+    private double gameMusicVolume = 0.6;// 游戏音乐音量（0-1）
+
     // 私有构造（单例）
     private SoundManager() {
         initSoundMap();
@@ -44,6 +49,55 @@ public class SoundManager {
         // soundMap.put("rebirth", "sounds/rebirth.wav");
     }
 
+
+
+    // ==================== 新增：背景音乐音量控制方法 ====================
+    /**
+     * 获取背景音乐音量（适配 SettingsWindow 调用）
+     */
+    public double getBGMVolume() {
+        return bgmVolume;
+    }
+
+    /**
+     * 设置背景音乐音量（实时生效）
+     */
+    public void setBGMVolume(double volume) {
+        // 限制音量范围 0-1
+        this.bgmVolume = Math.max(0, Math.min(1, volume));
+        // 实时更新主菜单背景音音量
+        if (backgroundPlayer != null) {
+            backgroundPlayer.setVolume(this.bgmVolume);
+        }
+    }
+
+    // ==================== 新增：音效音量控制方法 ====================
+    /**
+     * 获取音效音量（适配 SettingsWindow 调用）
+     */
+    public double getSFXVolume() {
+        return sfxVolume;
+    }
+
+    /**
+     * 设置音效音量（后续播放的音效生效）
+     */
+    public void setSFXVolume(double volume) {
+        // 限制音量范围 0-1
+        this.sfxVolume = Math.max(0, Math.min(1, volume));
+    }
+
+    // ==================== 新增：游戏音乐音量控制方法（可选，增强扩展性） ====================
+    public double getGameMusicVolume() {
+        return gameMusicVolume;
+    }
+
+    public void setGameMusicVolume(double volume) {
+        this.gameMusicVolume = Math.max(0, Math.min(1, volume));
+        if (gameMusicPlayer != null) {
+            gameMusicPlayer.setVolume(this.gameMusicVolume);
+        }
+    }
     // ==================== 主菜单背景音相关方法（原有逻辑，保持不变） ====================
     /**
      * 播放主菜单背景音（background.wav）
@@ -132,6 +186,7 @@ public class SoundManager {
         // 创建游戏音乐播放器并无限循环
         Media gameMedia = new Media(gameUrl.toExternalForm());
         gameMusicPlayer = new MediaPlayer(gameMedia);
+        gameMusicPlayer.setVolume(gameMusicVolume); // 应用游戏音乐音量
         gameMusicPlayer.setCycleCount(MediaPlayer.INDEFINITE); // 游戏音乐无限循环播放
         gameMusicPlayer.play();
     }
