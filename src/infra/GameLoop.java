@@ -45,4 +45,20 @@ public abstract class GameLoop extends AnimationTimer {
     // 抽象方法：交给 BaseGameScene 去实现
     public abstract void onUpdate(); // 逻辑 (60Hz)
     public abstract void onRender(); // 绘图 (屏幕刷新率)
+
+    public double getAccumulatedTime() {
+        return accumulatedTime;
+    }
+
+    public void setAccumulatedTime(double accumulatedTime) {
+        this.accumulatedTime = accumulatedTime;
+    }
+
+    public long getLastTime() {
+        return lastTime;
+    }
+
+    public void setLastTime(long lastTime) {
+        this.lastTime = lastTime;
+    }
 }

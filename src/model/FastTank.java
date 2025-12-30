@@ -73,4 +73,6 @@ public class FastTank extends EnemyTank {
             rotateTowardsAngle(sideAngle);
         }
     }
+
+
 }

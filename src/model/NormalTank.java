@@ -63,4 +63,6 @@ public class NormalTank extends EnemyTank {
     protected void updateAIState(boolean canSeePlayer) {
         super.updateAIState(canSeePlayer);
     }
+
+
 }
