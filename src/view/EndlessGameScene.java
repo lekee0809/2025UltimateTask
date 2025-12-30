@@ -670,4 +670,19 @@ public class EndlessGameScene extends BaseGameScene {
         gc.fillText("Total Score: " + score, WIDTH/2 - 100, HEIGHT/2 + 100);
         gc.restore();
     }
+
+    // EndlessGameScene 中添加 resetScene 重写
+    @Override
+    public void resetScene() {
+        super.resetScene(); // 父类重置
+        // 重置无尽模式数据
+        score = 0;
+        currentWave = 1;
+        isGameOver = false;
+        enemiesKilledInWave = 0;
+        enemyTanks.clear();
+        bullets.clear();
+        startWave(currentWave);
+        resumeGameProcess(); // 重置后恢复游戏
+    }
 }

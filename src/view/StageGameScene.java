@@ -1144,4 +1144,11 @@ public class StageGameScene extends BaseGameScene {
     public List<Bullet> getBullets() {
         return bullets;
     }
+
+    // StageGameScene 中重写 resetScene（如果需要），或确保 resetModeSpecificData 完整
+    @Override
+    public void resetScene() {
+        super.resetScene(); // 调用父类重置
+        restartGame(); // 重启当前关卡
+    }
 }

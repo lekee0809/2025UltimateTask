@@ -87,19 +87,26 @@ public class SettingsWindow {
         Button resumeBtn = new Button("继续游戏");
         resumeBtn.setPrefWidth(100);
         resumeBtn.setOnAction(e -> {
+            // 恢复游戏
+            BaseGameScene gameScene = (BaseGameScene) mainStage.getUserData();
+            if (gameScene != null) {
+                gameScene.resumeGameProcess();
+            }
             GameConfig.setGamePaused(false);
-            // 通知场景恢复游戏
-            ((BaseGameScene) mainStage.getUserData()).resumeGameProcess();
             hide();
         });
 
         Button restartBtn = new Button("重新开始");
         restartBtn.setPrefWidth(100);
         restartBtn.setOnAction(e -> {
+            // 重置游戏
+            BaseGameScene gameScene = (BaseGameScene) mainStage.getUserData();
+            if (gameScene != null) {
+                gameScene.resetScene();
+                gameScene.resumeGameProcess();
+            }
             GameConfig.setGamePaused(false);
             hide();
-            // 调用场景重置逻辑
-            ((BaseGameScene) mainStage.getUserData()).resetScene();
         });
 
         btnBox.getChildren().addAll(resumeBtn, restartBtn);
@@ -113,8 +120,11 @@ public class SettingsWindow {
 
         // 窗口关闭时自动恢复游戏
         settingsStage.setOnCloseRequest(e -> {
+            BaseGameScene gameScene = (BaseGameScene) mainStage.getUserData();
+            if (gameScene != null) {
+                gameScene.resumeGameProcess();
+            }
             GameConfig.setGamePaused(false);
-            ((BaseGameScene) mainStage.getUserData()).resumeGameProcess();
         });
     }
 
