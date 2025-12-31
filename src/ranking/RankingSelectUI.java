@@ -1,55 +1,125 @@
 package ranking;
 
-import infra.GameConfig; // 导入GameConfig，获取屏幕宽高
+import infra.GameConfig;
+import javafx.animation.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
-// 普通类，不继承Application
 public class RankingSelectUI {
-    // 显示选择界面（窗口大小为SCREEN_WIDTH, SCREEN_HEIGHT）
+
     public static void showSelectWindow() {
         Stage stage = new Stage();
-        stage.setTitle("选择游戏排行榜");
+        stage.setTitle("游戏排行榜 - 模式选择");
 
-        // 1. 创建3个模式选择按钮（保持原有样式，可按需调整大小）
-        Button singleBtn = createRankingButton("单人闯关排行榜");
-        Button doubleBtn = createRankingButton("双人对战排行榜");
-        Button endlessBtn = createRankingButton("无尽模式排行榜");
+        // ===== 标题 =====
+        Label titleLabel = new Label("RANKING  BOARDS");
+        titleLabel.setFont(Font.font("Verdana", FontWeight.EXTRA_BOLD, 42));
+        titleLabel.setTextFill(Color.web("#e0e0ff"));
+        titleLabel.setPadding(new Insets(0, 0, 35, 0));
 
-        // 2. 按钮点击事件
-        singleBtn.setOnAction(e -> RankingDisplay.showRankingWindow(PlayerRecord.GameMode.SINGLE_CHALLENGE));
-        doubleBtn.setOnAction(e -> RankingDisplay.showRankingWindow(PlayerRecord.GameMode.DOUBLE_BATTLE));
-        endlessBtn.setOnAction(e -> RankingDisplay.showRankingWindow(PlayerRecord.GameMode.ENDLESS_MODE));
+        DropShadow glow = new DropShadow(25, Color.web("#6a89ff"));
+        titleLabel.setEffect(glow);
 
-        // 3. 布局（与主菜单风格一致，更美观）
-        VBox root = new VBox(40, singleBtn, doubleBtn, endlessBtn); // 增大间距，适配大窗口
-        root.setPadding(new Insets(60));
+        playTitleGlow(titleLabel, glow);
+
+        // ===== 按钮 =====
+        Button singleBtn = createStyledButton("🎮 单人闯关排行榜", "#4facfe", "#00f2fe");
+        Button doubleBtn = createStyledButton("⚔ 双人对战排行榜", "#fa709a", "#fee140");
+        Button endlessBtn = createStyledButton("🔥 无尽模式排行榜", "#43e97b", "#38f9d7");
+
+        singleBtn.setOnAction(e ->
+                RankingDisplay.showRankingWindow(PlayerRecord.GameMode.SINGLE_CHALLENGE));
+        doubleBtn.setOnAction(e ->
+                RankingDisplay.showRankingWindow(PlayerRecord.GameMode.DOUBLE_BATTLE));
+        endlessBtn.setOnAction(e ->
+                RankingDisplay.showRankingWindow(PlayerRecord.GameMode.ENDLESS_MODE));
+
+        // ===== 布局 =====
+        VBox root = new VBox(28, titleLabel, singleBtn, doubleBtn, endlessBtn);
         root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color: #2c3e50;"); // 与主菜单背景统一
+        root.setStyle(
+                "-fx-background-color: radial-gradient(radius 100%, #1a1f3c, #000000);" +
+                        "-fx-padding: 40;"
+        );
 
-        // 4. 设置场景大小为 SCREEN_WIDTH, SCREEN_HEIGHT
         Scene scene = new Scene(root, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         stage.setScene(scene);
         stage.show();
     }
 
-    // 封装按钮创建方法，保持样式统一且适配大窗口
-    private static Button createRankingButton(String text) {
+    // ================== 按钮样式 ==================
+    private static Button createStyledButton(String text, String c1, String c2) {
         Button btn = new Button(text);
-        btn.setPrefSize(300, 60); // 与主菜单按钮大小一致
-        btn.setFont(new javafx.scene.text.Font("Consolas", 18));
-        btn.setStyle(
-                "-fx-background-color: #ecf0f1; " +
-                        "-fx-text-fill: #2c3e50; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-background-radius: 10;"
-        );
-        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #bdc3c7; -fx-background-radius: 10;"));
-        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: #ecf0f1; -fx-background-radius: 10;"));
+        btn.setPrefSize(380, 75);
+        btn.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 21));
+
+        String baseStyle =
+                "-fx-background-color: transparent;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-border-width: 3;" +
+                        "-fx-border-radius: 40;" +
+                        "-fx-background-radius: 40;" +
+                        "-fx-border-color: linear-gradient(to right, " + c1 + ", " + c2 + ");";
+
+        String hoverStyle =
+                "-fx-background-color: linear-gradient(to right, " + c1 + ", " + c2 + ");" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 40;";
+
+        btn.setStyle(baseStyle);
+
+        // Hover：浮起 + 发光
+        btn.setOnMouseEntered(e -> {
+            btn.setStyle(hoverStyle);
+            playScale(btn, 1.08);
+            btn.setTranslateY(-4);
+            btn.setEffect(new DropShadow(25, Color.web(c2)));
+        });
+
+        btn.setOnMouseExited(e -> {
+            btn.setStyle(baseStyle);
+            playScale(btn, 1.0);
+            btn.setTranslateY(0);
+            btn.setEffect(null);
+        });
+
+        // Click：回弹
+        btn.setOnMousePressed(e -> playScale(btn, 0.95));
+        btn.setOnMouseReleased(e -> playScale(btn, 1.08));
+
         return btn;
+    }
+
+    // ================== 动画 ==================
+
+    private static void playScale(Button btn, double scale) {
+        ScaleTransition st = new ScaleTransition(Duration.millis(180), btn);
+        st.setToX(scale);
+        st.setToY(scale);
+        st.setInterpolator(Interpolator.EASE_OUT);
+        st.play();
+    }
+
+    // 标题呼吸光
+    private static void playTitleGlow(Label label, DropShadow glow) {
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.ZERO,
+                        new KeyValue(glow.radiusProperty(), 20)),
+                new KeyFrame(Duration.seconds(2),
+                        new KeyValue(glow.radiusProperty(), 45))
+        );
+        timeline.setAutoReverse(true);
+        timeline.setCycleCount(Animation.INDEFINITE);
+        timeline.play();
     }
 }
