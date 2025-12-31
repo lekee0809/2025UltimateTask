@@ -1,5 +1,5 @@
 package view;
-
+import ranking.RankingManager;
 import game.AppLauncher;
 import item.Item;
 import item.ItemSpawner;
@@ -42,6 +42,7 @@ import javafx.geometry.Insets;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
+import ranking.PlayerRecord; // 新增：导入PlayerRecord
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -71,6 +72,8 @@ public class TwoPlayerGameScene extends BaseGameScene {
     private Scene scene;
     private ItemSpawner itemSpawner;
     private List<ParticleEffect> particleEffects;
+    // 新增：游戏开始时间戳（用于计算游玩时长）
+    private long gameStartTime;
 
     // 修复1：构造代码块（优先于所有构造方法执行，强制初始化mapTileView）
     {
@@ -80,6 +83,8 @@ public class TwoPlayerGameScene extends BaseGameScene {
         mapTileView.setLayoutY(0);
         mapTileView.setWidth(GameConfig.SCREEN_WIDTH);
         mapTileView.setHeight(GameConfig.SCREEN_HEIGHT);
+        // 初始化游戏开始时间
+        gameStartTime = System.currentTimeMillis();
     }
 
     public TwoPlayerGameScene(Stage primaryStage) {
@@ -94,6 +99,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
         // 新增：启动道具生成
         scheduleItemSpawn();
     }
+
     // 3. 添加道具更新方法
     private void updateItems() {
         // 检查玩家1的道具拾取
@@ -178,6 +184,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
             }
         }
     }
+
     private void initScene() {
         StackPane root = new StackPane();
         Canvas tankCanvas = new Canvas(GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
@@ -229,6 +236,9 @@ public class TwoPlayerGameScene extends BaseGameScene {
         mapTileView.reloadImages();
         twoPlayerMap.setCampaignMode(false);
 
+        // 重置游戏开始时间
+        gameStartTime = System.currentTimeMillis();
+
         SoundManager.getInstance().playBGM();
     }
 
@@ -251,6 +261,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
 
         SoundManager.getInstance().playSoundEffect("shoot");
     }
+
     // 8. 添加双人模式道具生成逻辑（例如通过随机事件生成）
     private void spawnItemRandomly() {
         // 双人模式的道具生成逻辑
@@ -271,6 +282,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
             }
         }
     }
+
     // 添加计时器定期生成道具
     private void scheduleItemSpawn() {
         // 使用 JavaFX 的 Timeline 代替 AnimationTimer，更简单
@@ -680,14 +692,45 @@ public class TwoPlayerGameScene extends BaseGameScene {
         if (player1Lives <= 0 && !gameOver) {
             gameOver = true;
             winner = "玩家2（红色坦克）胜利！";
+            // 新增：写入游戏记录
+            writeGameRecord(false); // 玩家1失败，对应记录isWin=false
             this.pauseGameProcess();
             Platform.runLater(this::showGameOverDialog);
         } else if (player2Lives <= 0 && !gameOver) {
             gameOver = true;
             winner = "玩家1（蓝色坦克）胜利！";
+            // 新增：写入游戏记录
+            writeGameRecord(true); // 玩家1胜利，对应记录isWin=true
             this.pauseGameProcess();
             Platform.runLater(this::showGameOverDialog);
         }
+    }
+
+    // 新增：封装游戏记录写入逻辑
+    private void writeGameRecord(boolean isPlayer1Win) {
+        // 计算游玩时长（秒）
+        long playTimeSeconds = (System.currentTimeMillis() - gameStartTime) / 1000;
+        // 2. 计算最终得分（自定义适配你的业务逻辑）
+        int finalScore;
+        if (isPlayer1Win) {
+            finalScore =  200; // 玩家1胜利得分
+        } else {
+            finalScore =  200; // 玩家2胜利得分（若需记录获胜方得分，可修改此处）
+        }
+
+        // 3. 道具数（无道具系统则传 0）
+        int itemCount = 0;
+        if (itemSpawner != null) {
+            itemCount = itemSpawner.getCollectedItems().size();
+        }
+
+        // 4. 核心：调用 RankingManager 写入双人模式记录
+        RankingManager.addRecord(
+                finalScore,
+                (int) playTimeSeconds,
+                PlayerRecord.GameMode.DOUBLE_BATTLE
+        );
+
     }
 
     @Override
@@ -707,6 +750,13 @@ public class TwoPlayerGameScene extends BaseGameScene {
 
     @Override
     protected PlayerTank getPlayerTank() {
-        return null;
+        // 双人模式返回玩家1（或按需返回，不影响记录逻辑）
+        return (PlayerTank) player1;
+    }
+
+    // 核心：实现父类抽象方法，返回双人对战模式
+    @Override
+    protected PlayerRecord.GameMode getCurrentGameMode() {
+        return PlayerRecord.GameMode.DOUBLE_BATTLE;
     }
 }
