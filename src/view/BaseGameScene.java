@@ -5,6 +5,8 @@ import item.ItemSpawner;
 import item.ItemType;
 import item.ParticleEffect;
 import model.PlayerTank;
+import ranking.PlayerRecord;
+import ranking.RankingManager;
 import view.SoundManager;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
@@ -66,6 +68,7 @@ public abstract class BaseGameScene {
     protected ItemSpawner itemSpawner;               // 道具生成器
     protected List<ParticleEffect> particleEffects;  // 粒子特效列表
 
+    private long pauseStartTime;
     // 构造方法（初始化流程优化）
     public BaseGameScene(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -294,6 +297,86 @@ public abstract class BaseGameScene {
         return HEIGHT;
     }
 
+    // 1. 原有 writeGameFinalRecord 方法：修改为兼容PlayerRecord（核心修改）
+    /**
+     * 游戏结束时写入最终记录（兼容PlayerRecord对象，无缝衔接）
+     * @param isWin 是否胜利
+     * @param score 最终得分
+     * @param survivalTime 存活时间（秒）
+     * @param itemCount 拾取道具数量
+     */
+    protected void writeGameFinalRecord(boolean isWin, int score, long survivalTime, int itemCount) {
+        // 1. 获取当前游戏模式（子类已实现抽象方法）
+        PlayerRecord.GameMode gameMode = getCurrentGameMode();
+        // 2. 核心：调用 RankingManager 添加记录（自动分文件存储+排序+截断）
+        // 注意：survivalTime 是long类型，这里强转int（与 RankingManager 参数一致，若需long可修改 RankingManager）
+        RankingManager.addRecord(score, (int) survivalTime, gameMode);
+
+        // 可选：保留原有道具拾取记录（如需）
+        String propRecord = String.format("拾取时间：%s, 道具类型：%s, 玩家位置：(%.2f, %.2f), 玩家血量：%d",
+                new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date()),
+                "通用道具",
+                getPlayerTank().getX(),
+                getPlayerTank().getY(),
+                getPlayerTank().getHealth()
+        );
+        writeRecordToFile(propRecord, "game_prop_record.txt");}
+
+    // 2. 新增：获取当前游戏模式（抽象方法，子类实现）
+    protected abstract PlayerRecord.GameMode getCurrentGameMode();
+
+    // 3. 原有 writeRecordToFile 方法：完全保留，不变（无需修改）
+    /**
+     * 通用记录写入文件工具方法（原有逻辑，直接复用）
+     * @param content 要写入的记录内容
+     * @param fileName 文件名
+     */
+    private void writeRecordToFile(String content, String fileName) {
+        new Thread(() -> {
+            java.io.BufferedWriter writer = null;
+            try {
+                java.io.File file = new java.io.File(fileName);
+                if (!file.exists()) {
+                    file.createNewFile();
+                }
+                writer = new java.io.BufferedWriter(
+                        new java.io.OutputStreamWriter(
+                                new java.io.FileOutputStream(file, true),
+                                "UTF-8"
+                        )
+                );
+                writer.write(content);
+                writer.newLine();
+                writer.flush();
+            } catch (java.io.IOException e) {
+                System.err.println("记录写入文件失败：" + e.getMessage());
+                e.printStackTrace();
+            } finally {
+                if (writer != null) {
+                    try {
+                        writer.close();
+                    } catch (java.io.IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
+
+    // 4. 新增：PlayerRecord对象专用写入方法（推荐，便于排行榜解析）
+    /**
+     * 写入PlayerRecord对象到文件（异步、追加、UTF-8编码）
+     * @param playerRecord 玩家记录对象
+     * @param fileName 文件名
+     */
+    protected void writePlayerRecordToFile(PlayerRecord playerRecord, String fileName) {
+        if (playerRecord == null) {
+            System.err.println("玩家记录对象为null，无法写入");
+            return;
+        }
+        // 复用原有异步写入逻辑，直接写入对象的toString（兼容格式）
+        writeRecordToFile(playerRecord.toString(), fileName);
+    }
 
 
     // ========== 新增：获取主舞台（给设置窗口用） ==========
@@ -306,32 +389,38 @@ public abstract class BaseGameScene {
     /**
      * 父类统一更新方法：处理道具拾取和特效逻辑
      */
+    // 5. 原有道具拾取记录：修改为兼容PlayerRecord（可选，优化）
     protected void updateBaseElements() {
         PlayerTank player = getPlayerTank();
         if (player == null) return;
 
-        // 1. 更新道具逻辑（位置、消失、玩家拾取）
         itemSpawner.update(player);
 
-        // 2. 自动处理本帧拾取后的通用效果
         for (Item item : itemSpawner.getCollectedItems()) {
-            // 生成金色粒子特效
             particleEffects.add(new ParticleEffect(
                     item.getX() + item.getWidth()/2,
                     item.getY() + item.getHeight()/2,
                     15, Color.GOLD, 0.5f
             ));
 
-            // 如果是炸弹，由于涉及场景内所有敌人，我们调用一个子类可以覆盖的方法
+            // 可选：道具拾取记录也使用PlayerRecord（或保留原有字符串，这里演示兼容）
+            String propRecord = String.format("拾取时间：%s, 道具类型：%s, 玩家位置：(%.2f, %.2f), 玩家血量：%d",
+                    new PlayerRecord(0,0,PlayerRecord.GameMode.SINGLE_CHALLENGE).getFinishTimeStr(),
+                    item.getType().name(),
+                    player.getX(),
+                    player.getY(),
+                    player.getHealth()
+            );
+            writeRecordToFile(propRecord, "game_prop_record.txt");
+
             if (item.getType() == ItemType.BOMB) {
                 handleBombEffect(item);
             }
         }
 
-        // 3. 更新粒子特效
         particleEffects.removeIf(ParticleEffect::isFinished);
         for (ParticleEffect effect : particleEffects) {
-            effect.update(0.016f); // 约60FPS
+            effect.update(0.016f);
         }
     }
     /**
@@ -380,4 +469,6 @@ public abstract class BaseGameScene {
         SoundManager.getInstance().playBGM();
         SoundManager.getInstance().resumeGameMusic(); // 兼容双人模式音频
     }
+
+
 }
