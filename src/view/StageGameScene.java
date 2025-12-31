@@ -119,7 +119,8 @@ public class StageGameScene extends BaseGameScene {
         bullets = new ArrayList<>();
 
         System.out.println("🚀 开始初始化闯关模式...");
-
+        // ========== 新增：播放背景音乐 ==========
+        SoundManager.getInstance().playGameMusic();
         try {
             // 加载第一关
             loadLevel(currentLevel);
@@ -141,6 +142,8 @@ public class StageGameScene extends BaseGameScene {
         if (gameLoop != null) {
             gameLoop.stop();
         }
+        // ========== 新增：停止背景音乐 ==========
+        SoundManager.getInstance().stopBackgroundMusic();
         // 这里需要调用返回主菜单的逻辑，你需要根据你的项目结构来实现
         // 例如：StartScene startScene = new StartScene(primaryStage);
         // primaryStage.setScene(startScene.getScene());
@@ -542,6 +545,8 @@ public class StageGameScene extends BaseGameScene {
             Bullet bullet = player.tryFire(map);
             if (bullet != null) {
                 bullets.add(bullet);
+                // ========== 新增：播放子弹发射音效 ==========
+                SoundManager.getInstance().playSoundEffect("explosion.wav"); // 替换为你的子弹音效文件路径
                 // System.out.println("🔫 玩家发射子弹");
             }
         }
@@ -1358,6 +1363,8 @@ public class StageGameScene extends BaseGameScene {
             } finally {
                 // 【关键：无论是否成功，都标记为已写入，避免重复尝试】
                 isRecordWritten = true;
+                // ========== 新增：游戏结束时停止背景音乐 ==========
+                SoundManager.getInstance().stopBackgroundMusic();
             }
         }
     }
