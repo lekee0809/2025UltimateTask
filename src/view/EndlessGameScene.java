@@ -12,6 +12,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import item.Item;
 import item.ItemType;
+import ranking.PlayerRecord; // 新增：导入PlayerRecord
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -42,6 +43,7 @@ public class EndlessGameScene extends BaseGameScene {
 
     private Random random;
     private long lastSpawnTime;       // 上次生成敌人的时间
+    private long gameStartTime;       // 新增：游戏开始时间戳（用于计算游玩时长）
 
     // ========== 界面常量 ==========
     private static final Font HUD_FONT = Font.font("Microsoft YaHei", FontWeight.BOLD, 20);
@@ -49,6 +51,7 @@ public class EndlessGameScene extends BaseGameScene {
 
     public EndlessGameScene(Stage stage) {
         super(stage);
+        gameStartTime = System.currentTimeMillis(); // 初始化游戏开始时间
     }
 
     // ========== 1. 初始化逻辑 ==========
@@ -77,12 +80,21 @@ public class EndlessGameScene extends BaseGameScene {
         enemiesKilledInWave = 0;
         enemyTanks.clear();
         bullets.clear();
+        gameStartTime = System.currentTimeMillis(); // 重置游戏开始时间
         startWave(currentWave);
     }
 
     @Override
     protected PlayerTank getPlayerTank() {
         return player;
+    }
+
+    /**
+     * 核心：实现父类抽象方法，返回无尽模式
+     */
+    @Override
+    protected PlayerRecord.GameMode getCurrentGameMode() {
+        return PlayerRecord.GameMode.ENDLESS_MODE;
     }
 
     /**
@@ -253,8 +265,29 @@ public class EndlessGameScene extends BaseGameScene {
         // 4. 检查玩家存活
         if (player != null && !player.isAlive()) {
             isGameOver = true;
-            System.out.println("💀 游戏结束！最终波次: " + currentWave + ", 得分: " + score);
+            // 计算核心数据
+            long playTime = (System.currentTimeMillis() - gameStartTime) / 1000;
+            int itemCount = itemSpawner.getCollectedItems().size();
+            boolean isWin = currentWave >= 10;
+            // 关键：调用父类方法，触发 RankingManager 写入记录
+            writeGameFinalRecord(isWin, score, playTime, itemCount);
+            System.out.println("无尽模式游戏结束，记录已提交至 RankingManager");
         }
+    }
+
+    /**
+     * 新增：封装无尽模式游戏记录写入逻辑
+     */
+    private void writeGameRecord() {
+        // 计算游玩时长（秒）
+        long playTime = (System.currentTimeMillis() - gameStartTime) / 1000;
+        // 拾取道具总数（从itemSpawner中获取）
+        int itemCount = itemSpawner.getActiveItems().size();
+        // 无尽模式无"胜利"概念，isWin传false（可自定义为：波次>=10算胜利）
+        boolean isWin = currentWave >= 10; // 自定义胜负规则
+
+        // 调用父类方法写入记录
+        writeGameFinalRecord(isWin, score, playTime, itemCount);
     }
 
     /**
@@ -682,6 +715,7 @@ public class EndlessGameScene extends BaseGameScene {
         enemiesKilledInWave = 0;
         enemyTanks.clear();
         bullets.clear();
+        gameStartTime = System.currentTimeMillis(); // 重置游戏开始时间
         startWave(currentWave);
         resumeGameProcess(); // 重置后恢复游戏
     }
