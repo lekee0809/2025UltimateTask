@@ -94,8 +94,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
         super(primaryStage); // 此时mapTileView已通过构造代码块初始化，非null
         initScene();
         // 新增：首次进入双人模式时，播放背景音乐
-        settingsWindow = new SettingsWindow(primaryStage);
-        SoundManager.getInstance().playGameMusic();
+        settingsWindow = new SettingsWindow(primaryStage, this);        SoundManager.getInstance().playGameMusic();
         // 新增：初始化道具系统
         itemSpawner = new ItemSpawner();
         particleEffects = new ArrayList<>();
@@ -136,7 +135,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
 
             // 检查玩家2是否拾取道具
             if (player2.isAlive() && item.checkCollision(player2)) {
-                if (item.applyEffect((PlayerTank) player2)) {
+                if (item.applyEffect((Tank) player2)) {
                     // 生成金色粒子特效
                     particleEffects.add(new ParticleEffect(
                             item.getX() + item.getWidth()/2,

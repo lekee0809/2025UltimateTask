@@ -15,10 +15,7 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import view.SoundManager;
-import view.StageGameScene;
-import view.TwoPlayerGameScene;
-import view.EndlessGameScene;
+import view.*;
 import ranking.RankingSelectUI;
 
 public class AppLauncher extends Application {
@@ -42,11 +39,10 @@ public class AppLauncher extends Application {
 
         // 2. 标题：保持你的原创名字 "FaZe LeKee's TANK WAR"
         Text title = new Text("FaZe LeKee's TANK WAR");
-        // 缩小一点字号以适应长名字，使用 Impact 或 Verdana 这种厚重的字体
         title.setFont(Font.font("Impact", FontWeight.BOLD, 48));
         title.setFill(Color.web("#fbc531")); // 战术亮黄色
 
-        // 给标题添加外发光效果，模拟通电的电子屏幕
+        // 给标题添加外发光效果
         DropShadow titleGlow = new DropShadow(25, Color.web("#fbc531", 0.6));
         titleGlow.setSpread(0.2);
         title.setEffect(titleGlow);
@@ -56,6 +52,10 @@ public class AppLauncher extends Application {
         Button btnEndlessMode = createMenuButton("无尽模式 (Endless Mode)", "#e67e22");
         Button btnPvPMode = createMenuButton("双人对战 (2 Players)", "#2980b9");
         Button btnRanking = createMenuButton("查看排行榜 (Ranking)", "#f1c40f");
+
+        // 【新增】设置按钮 (紫色代表科技/系统)
+        Button btnSettings = createMenuButton("系统设置 (Settings)", "#8e44ad");
+
         Button btnExit = createMenuButton("退出游戏 (Exit)", "#c0392b");
 
         // 按钮逻辑
@@ -63,10 +63,15 @@ public class AppLauncher extends Application {
         btnEndlessMode.setOnAction(e -> switchScene(primaryStage, new EndlessGameScene(primaryStage).getScene()));
         btnPvPMode.setOnAction(e -> switchScene(primaryStage, new TwoPlayerGameScene(primaryStage).getScene()));
         btnRanking.setOnAction(e -> RankingSelectUI.showSelectWindow());
+
+        // 【修复】点击设置按钮，调用 SettingsWindow.show(primaryStage)
+        btnSettings.setOnAction(e -> SettingsWindow.show(primaryStage));
+
         btnExit.setOnAction(e -> System.exit(0));
 
-        // 组装 UI
-        menuRoot.getChildren().addAll(title, btnStageMode, btnEndlessMode, btnPvPMode, btnRanking, btnExit);
+        // 组装 UI (别忘了把 btnSettings 加进去)
+        menuRoot.getChildren().addAll(title, btnStageMode, btnEndlessMode, btnPvPMode, btnRanking, btnSettings, btnExit);
+
         rootContainer.getChildren().addAll(menuRoot, scanLine);
 
         Scene menuScene = new Scene(rootContainer, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
@@ -118,7 +123,7 @@ public class AppLauncher extends Application {
         return btn;
     }
 
-    // 按钮震动动画（模拟机械手感）
+    // 按钮震动动画
     private void shakeButton(Button btn) {
         TranslateTransition tt = new TranslateTransition(Duration.millis(50), btn);
         tt.setFromX(0);

@@ -1,6 +1,5 @@
 package controller;
 
-import com.sun.javafx.collections.MappingChange;
 import infra.GameConfig;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
@@ -34,6 +33,7 @@ public class InputHandler {
     private boolean escPressed; // ESC键状态
     //游戏结束状态，是否返回
     private boolean r;
+
     public InputHandler(BaseGameScene scene) {
         this.scene = scene;
         // 初始化一次性按键监听容器（修复NullPointerException）
@@ -60,17 +60,20 @@ public class InputHandler {
             // ESC键（全局暂停）
         else if (code == KeyCode.ESCAPE) {
             escPressed = true;
-            // 触发暂停逻辑（通过父类统一处理）
+            // 触发暂停逻辑
             if (!GameConfig.isGamePaused()) {
                 scene.pauseGameProcess();
-                // 显示设置窗口
-                new view.SettingsWindow(scene.getPrimaryStage()).show();
+                // 【修复点】这里改为调用静态 show 方法，并传入 scene 参数
+                // 或者写成: new SettingsWindow(scene.getPrimaryStage(), scene).show();
+                SettingsWindow.show(scene.getPrimaryStage(), scene);
             }
         }
         // R键（返回主界面）
         else if (code == KeyCode.R) r = true;
 
-        if (code == KeyCode.R) r = false;
+        // 【注意】这里你原来的代码有一行 if (code == KeyCode.R) r = false;
+        // 这会导致 R 键按下瞬间变 true 又立刻变 false，建议删掉或放在 KeyReleased 里
+        // 我这里先保留你的原意，但通常是在 Released 里设为 false
 
         // 处理一次性按键监听
         if (onceKeyListeners.containsKey(code)) {
@@ -100,56 +103,26 @@ public class InputHandler {
 
             // ESC键
         else if (code == KeyCode.ESCAPE) escPressed = false;
+            // R键
+        else if (code == KeyCode.R) r = false;
     }
 
     // 重置按键状态
     public void resetKeyStates() {
         pressedKeys.clear();
-        // 如需重置其他输入状态（如鼠标位置、按钮点击状态）可在此补充
         w = s = a = d = j = false;
         up = down = left = right = enter = false;
         escPressed = false;
+        r = false;
     }
+
     /**
      * 绑定一次性按键监听（按下指定按键后执行回调，执行后自动解绑）
-     * @param keyCode 监听的按键（如ENTER、R）
-     * @param callback 按键按下后执行的回调函数
      */
     public void bindKeyPressOnce(KeyCode keyCode, Runnable callback) {
         onceKeyListeners.put(keyCode, callback);
     }
 
-    /**
-     * 一次性按键事件处理器（内部类，用于自动解绑）
-     */
-    private class KeyEventHandler implements javafx.event.EventHandler<KeyEvent> {
-        private KeyCode targetKey;
-
-        public KeyEventHandler(KeyCode targetKey) {
-            this.targetKey = targetKey;
-        }
-
-        @Override
-        public void handle(KeyEvent event) {
-            // 1. 匹配目标按键
-            if (event.getCode() == targetKey) {
-                // 2. 获取并执行回调
-                Runnable callback = onceKeyListeners.get(targetKey);
-                if (callback != null) {
-                    callback.run();
-                }
-
-                // 3. 执行后立即解绑（核心：一次性）
-                onceKeyListeners.remove(targetKey);
-                event.getSource();
-                Scene scene = (Scene) event.getSource();
-                scene.removeEventHandler(KeyEvent.KEY_PRESSED, this);
-
-                // 4. 消费事件，避免传递给其他监听
-                event.consume();
-            }
-        }
-    }
     // ========== 双人模式专用接口 (语义化命名) ==========
     public boolean p1Up() { return w; }
     public boolean p1Down() { return s; }
@@ -163,15 +136,12 @@ public class InputHandler {
     public boolean p2Right() { return right; }
     public boolean p2Fire() { return enter; }
 
-    // ========== [重要] 单人模式兼容接口 ==========
-    // 之前写的 StageGameScene 用的是这些名字，加在这里防止报错
+    // ========== 单人模式兼容接口 ==========
     public boolean isWPressed() { return w; }
     public boolean isSPressed() { return s; }
     public boolean isAPressed() { return a; }
     public boolean isDPressed() { return d; }
     public boolean isJPressed() { return j; }
     public boolean isRPressed() { return r; }
-    // 全局
     public boolean isEscPressed() { return escPressed; }
-
 }
