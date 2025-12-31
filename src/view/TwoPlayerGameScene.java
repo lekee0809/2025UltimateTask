@@ -136,7 +136,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
 
             // 检查玩家2是否拾取道具
             if (player2.isAlive() && item.checkCollision(player2)) {
-                if (item.applyEffect((PlayerTank) player2)) {
+                if (item.applyEffect((Tank) player2)) {
                     // 生成金色粒子特效
                     particleEffects.add(new ParticleEffect(
                             item.getX() + item.getWidth()/2,

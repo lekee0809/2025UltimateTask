@@ -162,75 +162,68 @@ public class Item {
      * 应用道具效果到玩家坦克
      * 返回true表示道具被成功使用
      */
-    public boolean applyEffect(PlayerTank player) {
+    /**
+     * 应用道具效果到坦克
+     * 【修复】参数改为 Tank 类型，兼容 P1 和 P2
+     */
+    public boolean applyEffect(Tank tank) {
         if (!active || isExpired()) return false;
 
-        active = false;  // 标记道具已被拾取
-        animationState = ItemAnimationState.COLLECTED; // 更新动画状态
+        active = false;
+        animationState = ItemAnimationState.COLLECTED;
 
         switch (type) {
             case HEAL:
                 int healAmount = 50;
-                int newHealth = Math.min(player.getMaxHealth(), player.getHealth() + healAmount);
-                player.setHealth(newHealth);
-                System.out.println("拾取回血道具，恢复" + healAmount + "点生命值");
+                // 确保 Tank 类里有 getHealth/setHealth
+                tank.setHealth(Math.min(tank.getMaxHealth(), tank.getHealth() + healAmount));
+                System.out.println("💚 拾取回血: " + tank);
                 return true;
 
             case INVINCIBLE:
-                // 5秒金光护盾
-                player.activateShield(5.0);
-                System.out.println("拾取无敌道具，获得 5 秒无敌护盾！");
+                // 使用 Tank 类里不卡顿的无敌方法
+                tank.activateShield(5.0);
+                System.out.println("🛡️ 拾取无敌: " + tank);
                 return true;
 
             case BOMB:
-                System.out.println("拾取炸弹道具");
+                System.out.println("💣 拾取炸弹");
                 return true;
 
-            // ==========================================
-            //  【核心修复】 新增 BUFF 处理逻辑
-            // ==========================================
             case BUFF:
-                // 随机一种增强效果
+                // 1. 立即生效
                 if (random.nextBoolean()) {
-                    // 效果A：加特林模式 (射速极快)
-                    // 假设原射速 200ms，现在改为 100ms
-                    player.buffFireRate(50);
-                    System.out.println("⚡ 拾取加速道具：射速提升！");
+                    tank.buffFireRate(100); // 射速变快
+                    System.out.println("⚡ 射速提升: " + tank);
                 } else {
-                    // 效果B：巨炮模式 (伤害翻倍)
-                    // 假设原伤害 20，现在改为 40
-                    player.buffDamage(1000);
-                    System.out.println("💪 拾取火力道具：伤害翻倍！");
+                    tank.buffDamage(40);    // 伤害变高
+                    System.out.println("💪 伤害翻倍: " + tank);
                 }
 
-                // 2. 【关键修改】开启一个"新线程"去等待
-                // 绝对不能直接写 Thread.sleep，否则游戏会卡死！
+                // 2. 【核心修复】开启新线程倒计时，防止卡死游戏！！！
+                // 如果没有 new Thread，游戏就会卡住不动！
                 new Thread(() -> {
                     try {
-                        // 在后台线程里睡 10秒 (或者你设定的时间)
-                        Thread.sleep(10000);
+                        Thread.sleep(10000); // 后台等待10秒
 
-                        // 醒来后，恢复属性
-                        // 为了安全，建议用 Platform.runLater 切回主线程执行恢复
+                        // 时间到，切回主线程恢复属性
                         javafx.application.Platform.runLater(() -> {
-                            if (player.isAlive()) {
-                                player.resetStats();
-                                System.out.println("Buff 效果结束，属性已恢复");
+                            if (tank.isAlive()) {
+                                tank.resetStats();
+                                System.out.println("Buff 效果结束");
                             }
                         });
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                }).start(); // <--- 别忘了这句 .start()，让线程跑起来
+                }).start(); // <--- 必须有 .start()
 
                 return true;
-            // ==========================================
 
             default:
                 return false;
         }
     }
-
 
     /**
      * 应用炸弹效果到所有敌人坦克
