@@ -17,6 +17,9 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Stop;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -25,6 +28,20 @@ import infra.GameConfig;
 import map.MapModel;
 import map.MapTileView;
 import model.*;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.Stop;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.KeyCode;
+import javafx.geometry.Insets;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.stage.Window;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -327,29 +344,92 @@ public class TwoPlayerGameScene extends BaseGameScene {
             return;
         }
 
-        Alert gameOverAlert = new Alert(Alert.AlertType.CONFIRMATION);
-        gameOverAlert.setTitle("游戏结束");
-        gameOverAlert.setHeaderText(winner);
-        gameOverAlert.setContentText("请选择后续操作：");
-        gameOverAlert.initStyle(StageStyle.UTILITY);
-        gameOverAlert.initOwner(primaryStage);
+        // 创建自定义对话框
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.initOwner(primaryStage);
+        dialog.setTitle("游戏结束");
+        dialog.setHeaderText(null);
+        dialog.setGraphic(null);
 
-        ButtonType restartBtn = new ButtonType("重新开始");
-        ButtonType backToMainBtn = new ButtonType("返回主界面");
-        gameOverAlert.getButtonTypes().setAll(restartBtn, backToMainBtn);
+        // 设置对话框位置（固定在左上角）
+        dialog.setOnShown(e -> {
+            Window window = dialog.getDialogPane().getScene().getWindow();
+            window.setX(primaryStage.getX() + 50);  // 距离主窗口左边50像素
+            window.setY(primaryStage.getY() + 50);  // 距离主窗口上边50像素
+        });
 
-        Optional<ButtonType> result = gameOverAlert.showAndWait();
+        // 创建自定义内容面板
+        VBox contentBox = new VBox(15);
+        contentBox.setPadding(new javafx.geometry.Insets(20));
+        contentBox.setStyle("-fx-background-color: linear-gradient(to bottom, #2c3e50, #34495e);" +
+                "-fx-background-radius: 10;" +
+                "-fx-border-color: #f39c12;" +
+                "-fx-border-width: 2;" +
+                "-fx-border-radius: 10;");
+
+        // 标题
+        Label titleLabel = new Label("🎮 游戏结束");
+        titleLabel.setFont(Font.font("微软雅黑", FontWeight.BOLD, 22));
+        titleLabel.setTextFill(Color.WHITE);
+
+        // 胜利者信息
+        Label winnerLabel = new Label(winner);
+        winnerLabel.setFont(Font.font("微软雅黑", FontWeight.BOLD, 20));
+
+        // 根据胜利者设置颜色
+        if (winner.contains("玩家1")) {
+            winnerLabel.setTextFill(Color.rgb(0, 180, 255)); // 蓝色
+        } else {
+            winnerLabel.setTextFill(Color.rgb(255, 80, 80)); // 红色
+        }
+
+        // 提示文本
+        Label hintLabel = new Label("请选择后续操作：");
+        hintLabel.setFont(Font.font("微软雅黑", FontWeight.NORMAL, 14));
+        hintLabel.setTextFill(Color.rgb(180, 180, 180));
+
+        // 添加内容到面板
+        contentBox.getChildren().addAll(titleLabel, winnerLabel, hintLabel);
+
+        // 创建自定义按钮
+        ButtonType restartBtn = new ButtonType("🔄 重新开始", ButtonBar.ButtonData.OK_DONE);
+        ButtonType backBtn = new ButtonType("🏠 返回主界面", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        dialog.getDialogPane().getButtonTypes().addAll(restartBtn, backBtn);
+
+        // 获取按钮并自定义样式
+        Button restartButton = (Button) dialog.getDialogPane().lookupButton(restartBtn);
+        Button backButton = (Button) dialog.getDialogPane().lookupButton(backBtn);
+
+        restartButton.setStyle("-fx-background-color: #2ecc71;" +
+                "-fx-text-fill: white;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 5;" +
+                "-fx-padding: 8 15;");
+
+        backButton.setStyle("-fx-background-color: #3498db;" +
+                "-fx-text-fill: white;" +
+                "-fx-font-weight: bold;" +
+                "-fx-background-radius: 5;" +
+                "-fx-padding: 8 15;");
+
+        // 设置对话框内容
+        dialog.getDialogPane().setContent(contentBox);
+        dialog.getDialogPane().setPrefSize(400, 200);
+
+        // 显示对话框并处理结果
+        Optional<ButtonType> result = dialog.showAndWait();
         if (result.isPresent()) {
             if (result.get() == restartBtn) {
                 this.resetModeSpecificData();
                 this.resumeGameProcess();
-            } else if (result.get() == backToMainBtn) {
+            } else if (result.get() == backBtn) {
                 // 1. 停止游戏背景音乐，避免与主菜单音频冲突
                 SoundManager.getInstance().stopGameMusic();
                 SoundManager.getInstance().playBackgroundMusic();
                 // 2. 核心修改：重新初始化 AppLauncher 主菜单
                 AppLauncher mainMenu = new AppLauncher();
-                mainMenu.start(primaryStage); // 调用 start 方法重建主菜单场景
+                mainMenu.start(primaryStage);
             }
         }
     }
@@ -496,7 +576,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
         for (ParticleEffect effect : particleEffects) {
             spritePainter.drawParticleEffect(bulletGc, effect);
         }
-        drawPlayerLives(tankGc);
+        drawPlayerHUD(tankGc);
         if (gameOver) drawGameOverUI(tankGc);
     }
 
@@ -505,32 +585,61 @@ public class TwoPlayerGameScene extends BaseGameScene {
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
     }
 
-    private void drawPlayerLives(GraphicsContext gc) {
-        gc.setFont(Font.font("微软雅黑", FontWeight.BOLD, 24));
-        gc.setStroke(Color.BLACK);
-        gc.setLineWidth(2);
-        gc.setFill(Color.GREEN);
-        String player1LifeText = "玩家1：" + player1Lives + " 命";
-        gc.fillText(player1LifeText, 20, 40);
-        gc.strokeText(player1LifeText, 20, 40);
+    private void drawPlayerHUD(GraphicsContext gc) {
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 18));
 
-        gc.setFill(Color.RED);
-        String player2LifeText = "玩家2：" + player2Lives + " 命";
-        double player2TextWidth = getTextWidth(gc, player2LifeText);
-        gc.fillText(player2LifeText, GameConfig.SCREEN_WIDTH - player2TextWidth - 20, 40);
-        gc.strokeText(player2LifeText, GameConfig.SCREEN_WIDTH - player2TextWidth - 20, 40);
+        // 绘制 P1 背景框 (绿色系)
+        gc.setFill(Color.web("#27AE60", 0.8));
+        gc.fillRoundRect(20, 20, 160, 40, 10, 10);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(2);
+        gc.strokeRoundRect(20, 20, 160, 40, 10, 10);
+
+        // 绘制 P1 文字
+        gc.setFill(Color.WHITE);
+        gc.fillText("P1 剩余生命: " + player1Lives, 35, 47);
+
+        // 绘制 P2 背景框 (红色系)
+        double p2X = GameConfig.SCREEN_WIDTH - 180;
+        gc.setFill(Color.web("#C0392B", 0.8));
+        gc.fillRoundRect(p2X, 20, 160, 40, 10, 10);
+        gc.setStroke(Color.WHITE);
+        gc.strokeRoundRect(p2X, 20, 160, 40, 10, 10);
+
+        // 绘制 P2 文字
+        gc.setFill(Color.WHITE);
+        gc.fillText("P2 剩余生命: " + player2Lives, p2X + 15, 47);
     }
 
     private void drawGameOverUI(GraphicsContext gc) {
-        gc.setFill(Color.rgb(0, 0, 0, 0.7));
+        // 1. 全屏渐变压暗背景
+        LinearGradient grad = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+                new Stop(0, Color.rgb(0,0,0,0.85)),
+                new Stop(1, Color.rgb(20,20,40,0.95)));
+        gc.setFill(grad);
         gc.fillRect(0, 0, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
-        gc.setFill(Color.ORANGE);
-        gc.setFont(Font.font("微软雅黑", FontWeight.BOLD, 48));
-        double winnerWidth = getTextWidth(gc, winner);
-        gc.fillText(winner, (GameConfig.SCREEN_WIDTH - winnerWidth) / 2, (GameConfig.SCREEN_HEIGHT / 2) - 50);
-        gc.setStroke(Color.RED);
-        gc.setLineWidth(2);
-        gc.strokeText(winner, (GameConfig.SCREEN_WIDTH - winnerWidth) / 2, (GameConfig.SCREEN_HEIGHT / 2) - 50);
+
+        // 2. 准备字体
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.EXTRA_BOLD, 50));
+        double tw = getTextWidth(gc, winner);
+        double tx = (GameConfig.SCREEN_WIDTH - tw) / 2;
+        double ty = GameConfig.SCREEN_HEIGHT / 2;
+
+        // 3. 绘制文字阴影
+        gc.setFill(Color.BLACK);
+        gc.fillText(winner, tx + 4, ty + 4);
+
+        // 4. 绘制金色渐变文字
+        LinearGradient textGrad = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+                new Stop(0, Color.GOLD),
+                new Stop(1, Color.ORANGE));
+        gc.setFill(textGrad);
+        gc.fillText(winner, tx, ty);
+
+        // 5. 绘制装饰线
+        gc.setStroke(Color.GOLD);
+        gc.setLineWidth(3);
+        gc.strokeLine(tx, ty + 15, tx + tw, ty + 15);
     }
 
     private void updateBullets() {
