@@ -226,7 +226,25 @@ public class Item {
                 System.out.println("  敌方坦克受到炸弹伤害，剩余血量: " + enemy.getHealth());
             }
         }
+
+    }/**
+     * 应用炸弹效果到单个目标（用于双人模式）
+     * @param target 目标坦克
+     * @param damage 造成的伤害
+     */
+    public void applyBombEffect(Tank target, int damage) {
+        if (type != ItemType.BOMB || !active) return;
+
+        active = false;
+        animationState = ItemAnimationState.COLLECTED;
+
+        if (target != null && target.isAlive()) {
+            target.takeDamage(damage);
+            System.out.println("💣 炸弹爆炸！" + target + "受到" + damage + "点伤害");
+        }
     }
+
+
 
     // ===================== Getter方法 =====================
 
