@@ -664,6 +664,143 @@ public abstract class BaseGameScene {
         );
     }
 
+    public void setPrimaryStage(Stage primaryStage) {
+        this.primaryStage = primaryStage;
+    }
 
+    public void setScene(Scene scene) {
+        this.scene = scene;
+    }
 
+    public GameLoop getGameLoop() {
+        return gameLoop;
+    }
+
+    public void setGameLoop(GameLoop gameLoop) {
+        this.gameLoop = gameLoop;
+    }
+
+    public Canvas getMapCanvas() {
+        return mapCanvas;
+    }
+
+    public void setMapCanvas(Canvas mapCanvas) {
+        this.mapCanvas = mapCanvas;
+    }
+
+    public GraphicsContext getMapGc() {
+        return mapGc;
+    }
+
+    public void setMapGc(GraphicsContext mapGc) {
+        this.mapGc = mapGc;
+    }
+
+    public Canvas getTankCanvas() {
+        return tankCanvas;
+    }
+
+    public void setTankCanvas(Canvas tankCanvas) {
+        this.tankCanvas = tankCanvas;
+    }
+
+    public GraphicsContext getTankGc() {
+        return tankGc;
+    }
+
+    public void setTankGc(GraphicsContext tankGc) {
+        this.tankGc = tankGc;
+    }
+
+    public Canvas getBulletCanvas() {
+        return bulletCanvas;
+    }
+
+    public void setBulletCanvas(Canvas bulletCanvas) {
+        this.bulletCanvas = bulletCanvas;
+    }
+
+    public GraphicsContext getBulletGc() {
+        return bulletGc;
+    }
+
+    public void setBulletGc(GraphicsContext bulletGc) {
+        this.bulletGc = bulletGc;
+    }
+
+    public void setGameRoot(StackPane gameRoot) {
+        this.gameRoot = gameRoot;
+    }
+
+    public SpritePainter getSpritePainter() {
+        return spritePainter;
+    }
+
+    public void setSpritePainter(SpritePainter spritePainter) {
+        this.spritePainter = spritePainter;
+    }
+
+    public InputHandler getInputHandler() {
+        return inputHandler;
+    }
+
+    public void setInputHandler(InputHandler inputHandler) {
+        this.inputHandler = inputHandler;
+    }
+
+    public VBox getPauseMenu() {
+        return pauseMenu;
+    }
+
+    public void setPauseMenu(VBox pauseMenu) {
+        this.pauseMenu = pauseMenu;
+    }
+
+    public boolean isPaused() {
+        return isPaused;
+    }
+
+    public void setPaused(boolean paused) {
+        isPaused = paused;
+    }
+
+    public Text getTipText() {
+        return tipText;
+    }
+
+    public void setTipText(Text tipText) {
+        this.tipText = tipText;
+    }
+
+    public Animation getCurrentTipAnimation() {
+        return currentTipAnimation;
+    }
+
+    public void setCurrentTipAnimation(Animation currentTipAnimation) {
+        this.currentTipAnimation = currentTipAnimation;
+    }
+
+    public ItemSpawner getItemSpawner() {
+        return itemSpawner;
+    }
+
+    public void setItemSpawner(ItemSpawner itemSpawner) {
+        this.itemSpawner = itemSpawner;
+    }
+
+    public List<ParticleEffect> getParticleEffects() {
+        return particleEffects;
+    }
+
+    public void setParticleEffects(List<ParticleEffect> particleEffects) {
+        this.particleEffects = particleEffects;
+    }
+
+    public long getPauseStartTime() {
+        return pauseStartTime;
+    }
+
+    public void setPauseStartTime(long pauseStartTime) {
+        this.pauseStartTime = pauseStartTime;
+    }
 }

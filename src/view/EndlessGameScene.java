@@ -836,4 +836,123 @@ public class EndlessGameScene extends BaseGameScene {
         resumeGameProcess(); // 重置后恢复游戏
     }
 
+    public PlayerTank getPlayer() {
+        return player;
+    }
+
+    public void setPlayer(PlayerTank player) {
+        this.player = player;
+    }
+
+    public List<Tank> getEnemyTanks() {
+        return enemyTanks;
+    }
+
+    public void setEnemyTanks(List<Tank> enemyTanks) {
+        this.enemyTanks = enemyTanks;
+    }
+
+    public List<Bullet> getBullets() {
+        return bullets;
+    }
+
+    public void setBullets(List<Bullet> bullets) {
+        this.bullets = bullets;
+    }
+
+    public MapModel getMapModel() {
+        return mapModel;
+    }
+
+    public void setMapModel(MapModel mapModel) {
+        this.mapModel = mapModel;
+    }
+
+    public Tile[][] getMap() {
+        return map;
+    }
+
+    public void setMap(Tile[][] map) {
+        this.map = map;
+    }
+
+    public int getCurrentWave() {
+        return currentWave;
+    }
+
+    public void setCurrentWave(int currentWave) {
+        this.currentWave = currentWave;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
+    public int getEnemiesKilledInWave() {
+        return enemiesKilledInWave;
+    }
+
+    public void setEnemiesKilledInWave(int enemiesKilledInWave) {
+        this.enemiesKilledInWave = enemiesKilledInWave;
+    }
+
+    public int getTargetKills() {
+        return targetKills;
+    }
+
+    public void setTargetKills(int targetKills) {
+        this.targetKills = targetKills;
+    }
+
+    public int getMaxEnemiesOnScreen() {
+        return maxEnemiesOnScreen;
+    }
+
+    public void setMaxEnemiesOnScreen(int maxEnemiesOnScreen) {
+        this.maxEnemiesOnScreen = maxEnemiesOnScreen;
+    }
+
+    public boolean isGameOver() {
+        return isGameOver;
+    }
+
+    public void setGameOver(boolean gameOver) {
+        isGameOver = gameOver;
+    }
+
+    public boolean isWaveClearing() {
+        return isWaveClearing;
+    }
+
+    public void setWaveClearing(boolean waveClearing) {
+        isWaveClearing = waveClearing;
+    }
+
+    public Random getRandom() {
+        return random;
+    }
+
+    public void setRandom(Random random) {
+        this.random = random;
+    }
+
+    public long getLastSpawnTime() {
+        return lastSpawnTime;
+    }
+
+    public void setLastSpawnTime(long lastSpawnTime) {
+        this.lastSpawnTime = lastSpawnTime;
+    }
+
+    public long getGameStartTime() {
+        return gameStartTime;
+    }
+
+    public void setGameStartTime(long gameStartTime) {
+        this.gameStartTime = gameStartTime;
+    }
 }

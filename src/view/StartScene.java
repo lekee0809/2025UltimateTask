@@ -156,4 +156,16 @@ public class StartScene {
     public Scene getScene() {
         return scene;
     }
+
+    public Stage getPrimaryStage() {
+        return primaryStage;
+    }
+
+    public void setPrimaryStage(Stage primaryStage) {
+        this.primaryStage = primaryStage;
+    }
+
+    public void setScene(Scene scene) {
+        this.scene = scene;
+    }
 }

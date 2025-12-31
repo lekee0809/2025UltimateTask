@@ -820,4 +820,157 @@ public class TwoPlayerGameScene extends BaseGameScene {
     protected PlayerRecord.GameMode getCurrentGameMode() {
         return PlayerRecord.GameMode.DOUBLE_BATTLE;
     }
+
+    public SettingsWindow getSettingsWindow() {
+        return settingsWindow;
+    }
+
+    public void setSettingsWindow(SettingsWindow settingsWindow) {
+        this.settingsWindow = settingsWindow;
+    }
+
+    public Tank getPlayer1() {
+        return player1;
+    }
+
+    public void setPlayer1(Tank player1) {
+        this.player1 = player1;
+    }
+
+    public Tank getPlayer2() {
+        return player2;
+    }
+
+    public void setPlayer2(Tank player2) {
+        this.player2 = player2;
+    }
+
+    public boolean isP1Shooting() {
+        return p1Shooting;
+    }
+
+    public void setP1Shooting(boolean p1Shooting) {
+        this.p1Shooting = p1Shooting;
+    }
+
+    public boolean isP2Shooting() {
+        return p2Shooting;
+    }
+
+    public void setP2Shooting(boolean p2Shooting) {
+        this.p2Shooting = p2Shooting;
+    }
+
+    public double getPLAYER1_BIRTH_X() {
+        return PLAYER1_BIRTH_X;
+    }
+
+    public double getPLAYER1_BIRTH_Y() {
+        return PLAYER1_BIRTH_Y;
+    }
+
+    public double getPLAYER2_BIRTH_X() {
+        return PLAYER2_BIRTH_X;
+    }
+
+    public double getPLAYER2_BIRTH_Y() {
+        return PLAYER2_BIRTH_Y;
+    }
+
+    public List<Bullet> getBulletList() {
+        return bulletList;
+    }
+
+    public void setBulletList(List<Bullet> bulletList) {
+        this.bulletList = bulletList;
+    }
+
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
+    public void setGameOver(boolean gameOver) {
+        this.gameOver = gameOver;
+    }
+
+    public String getWinner() {
+        return winner;
+    }
+
+    public void setWinner(String winner) {
+        this.winner = winner;
+    }
+
+    public int getPlayer1Lives() {
+        return player1Lives;
+    }
+
+    public void setPlayer1Lives(int player1Lives) {
+        this.player1Lives = player1Lives;
+    }
+
+    public int getPlayer2Lives() {
+        return player2Lives;
+    }
+
+    public void setPlayer2Lives(int player2Lives) {
+        this.player2Lives = player2Lives;
+    }
+
+    public MapModel getTwoPlayerMap() {
+        return twoPlayerMap;
+    }
+
+    public void setTwoPlayerMap(MapModel twoPlayerMap) {
+        this.twoPlayerMap = twoPlayerMap;
+    }
+
+    public Tile[][] getTwoPlayerTileMap() {
+        return twoPlayerTileMap;
+    }
+
+    public void setTwoPlayerTileMap(Tile[][] twoPlayerTileMap) {
+        this.twoPlayerTileMap = twoPlayerTileMap;
+    }
+
+    public MapTileView getMapTileView() {
+        return mapTileView;
+    }
+
+    public void setMapTileView(MapTileView mapTileView) {
+        this.mapTileView = mapTileView;
+    }
+
+    @Override
+    public void setScene(Scene scene) {
+        this.scene = scene;
+    }
+
+    @Override
+    public ItemSpawner getItemSpawner() {
+        return itemSpawner;
+    }
+
+    @Override
+    public void setItemSpawner(ItemSpawner itemSpawner) {
+        this.itemSpawner = itemSpawner;
+    }
+
+    @Override
+    public List<ParticleEffect> getParticleEffects() {
+        return particleEffects;
+    }
+
+    @Override
+    public void setParticleEffects(List<ParticleEffect> particleEffects) {
+        this.particleEffects = particleEffects;
+    }
+
+    public long getGameStartTime() {
+        return gameStartTime;
+    }
+
+    public void setGameStartTime(long gameStartTime) {
+        this.gameStartTime = gameStartTime;
+    }
 }

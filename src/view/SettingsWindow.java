@@ -159,4 +159,28 @@ public class SettingsWindow {
     interface SliderCallback {
         void onChange(double value);
     }
+
+    public Stage getSettingsStage() {
+        return settingsStage;
+    }
+
+    public void setSettingsStage(Stage settingsStage) {
+        this.settingsStage = settingsStage;
+    }
+
+    public Stage getMainStage() {
+        return mainStage;
+    }
+
+    public void setMainStage(Stage mainStage) {
+        this.mainStage = mainStage;
+    }
+
+    public BaseGameScene getGameScene() {
+        return gameScene;
+    }
+
+    public void setGameScene(BaseGameScene gameScene) {
+        this.gameScene = gameScene;
+    }
 }
