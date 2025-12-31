@@ -56,6 +56,9 @@ public class TwoPlayerGameScene extends BaseGameScene {
 
     private Tank player1;
     private Tank player2;
+    // ======== 新增：射击状态控制 ========
+    private boolean p1Shooting = false;
+    private boolean p2Shooting = false;
     private final double PLAYER1_BIRTH_X = 80;
     private final double PLAYER1_BIRTH_Y = 300;
     private final double PLAYER2_BIRTH_X = 700;
@@ -242,26 +245,24 @@ public class TwoPlayerGameScene extends BaseGameScene {
         SoundManager.getInstance().playBGM();
     }
 
+    /**
+     * 【修复版】射击逻辑
+     * 使用 Tank.tryFire() 来接管射击，自动应用冷却时间和墙壁检测
+     */
     private void shootBullet(Tank tank) {
         if (gameOver || tank == null) return;
 
-        boolean isEnemy = (tank.getType() != Tank.TankType.PLAYER_GREEN);
-        int damage = tank.getBulletDamage();
-        int direction = (int) tank.getDisplayRotation();
-        double bulletSpeed = tank.getBulletSpeed();
-        double radians = Math.toRadians(direction);
-        double speedx = Math.sin(radians) * bulletSpeed;
-        double speedy = -Math.cos(radians) * bulletSpeed;
-        double muzzleX = tank.getCenterX() - GameConfig.BULLET_RADIUS;
-        double muzzleY = tank.getCenterY() - GameConfig.BULLET_RADIUS;
-        double bulletWidth = GameConfig.BULLET_RADIUS * 2;
-        double bulletHeight = GameConfig.BULLET_RADIUS * 2;
-        Bullet bullet = new Bullet(isEnemy, damage, direction, speedx, speedy, muzzleX, muzzleY, bulletWidth, bulletHeight);
-        bulletList.add(bullet);
+        // 核心修改：调用 tank 自带的尝试开火方法
+        // 它会检查冷却时间 (Fire Cooldown) 和 枪口是否卡墙
+        // 如果冷却没好，或者枪口在墙里，它会返回 null
+        Bullet bullet = tank.tryFire(twoPlayerTileMap);
 
-        SoundManager.getInstance().playSoundEffect("shoot");
+        // 只有成功生成了子弹（即满足冷却条件），才添加到列表中并播放音效
+        if (bullet != null) {
+            bulletList.add(bullet);
+            SoundManager.getInstance().playSoundEffect("shoot");
+        }
     }
-
     // 8. 添加双人模式道具生成逻辑（例如通过随机事件生成）
     private void spawnItemRandomly() {
         // 双人模式的道具生成逻辑
@@ -501,38 +502,47 @@ public class TwoPlayerGameScene extends BaseGameScene {
         player1.setHealth(3);
         player1.setAlive(true);
 
+        player1.buffFireRate(600);
+        player1.activateShield(3.0);
+
         player2 = new NormalTank(PLAYER2_BIRTH_X, PLAYER2_BIRTH_Y);
         player2.setSpeed(3);
         player2.setHealth(3);
         player2.setAlive(true);
         player2.setLogicRotation(180.0);
         player2.setDisplayRotation(180.0);
+
+        player2.buffFireRate(600);
+        player2.activateShield(3.0);
     }
 
     private void bindTwoPlayerInput() {
-        if (scene == null) {
-            System.err.println("警告：scene为空，无法绑定双玩家输入！");
-            return;
-        }
+        if (scene == null) return;
 
+        // 按下按键：标记为正在射击
         scene.setOnKeyPressed(e -> {
             if (gameOver) return;
 
-
             switch (e.getCode()) {
+                // P1 移动
                 case W: if (player1.isAlive()) player1.setMovingForward(true); break;
                 case S: if (player1.isAlive()) player1.setMovingBackward(true); break;
                 case A: if (player1.isAlive()) player1.setRotatingLeft(true); break;
                 case D: if (player1.isAlive()) player1.setRotatingRight(true); break;
-                case J: if (player1.isAlive()) shootBullet(player1); break;
+                // P1 射击 (修改这里！)
+                case J: if (player1.isAlive()) p1Shooting = true; break;
+
+                // P2 移动
                 case UP: if (player2.isAlive()) player2.setMovingForward(true); break;
                 case DOWN: if (player2.isAlive()) player2.setMovingBackward(true); break;
                 case LEFT: if (player2.isAlive()) player2.setRotatingLeft(true); break;
                 case RIGHT: if (player2.isAlive()) player2.setRotatingRight(true); break;
-                case K: if (player2.isAlive()) shootBullet(player2); break;
+                // P2 射击 (修改这里！)
+                case K: if (player2.isAlive()) p2Shooting = true; break;
             }
         });
 
+        // 松开按键：取消射击状态
         scene.setOnKeyReleased(e -> {
             if (gameOver) return;
             switch (e.getCode()) {
@@ -540,13 +550,19 @@ public class TwoPlayerGameScene extends BaseGameScene {
                 case S: player1.setMovingBackward(false); break;
                 case A: player1.setRotatingLeft(false); break;
                 case D: player1.setRotatingRight(false); break;
+                // P1 停止射击
+                case J: p1Shooting = false; break;
+
                 case UP: player2.setMovingForward(false); break;
                 case DOWN: player2.setMovingBackward(false); break;
                 case LEFT: player2.setRotatingLeft(false); break;
                 case RIGHT: player2.setRotatingRight(false); break;
+                // P2 停止射击
+                case K: p2Shooting = false; break;
             }
         });
     }
+
 
     private boolean isCollide(Bullet bullet, Tank tank) {
         return bullet.getX() >= tank.getX() && bullet.getX() <= tank.getX() + tank.getWidth()
@@ -583,17 +599,29 @@ public class TwoPlayerGameScene extends BaseGameScene {
     @Override
     protected void updateGameLogic() {
         if (gameOver) return;
+
+        // 1. 更新移动
         if (player1.isAlive()) player1.update(twoPlayerTileMap);
         if (player2.isAlive()) player2.update(twoPlayerTileMap);
+
+        // 2. 【新增】处理连续射击逻辑
+        // 只要按键按着，且人活着，就尝试开火
+        // (Tank.tryFire 内部有冷却时间控制，所以不用担心射速过快，它会自动处理)
+        if (player1.isAlive() && p1Shooting) {
+            shootBullet(player1);
+        }
+        if (player2.isAlive() && p2Shooting) {
+            shootBullet(player2);
+        }
+
+        // 3. 其他更新
         updateBullets();
         checkCollisions();
         checkTankDeathAndRebirth();
         checkGameOver();
         mapTileView.render(twoPlayerMap);
-        // 新增：更新道具系统
         updateItems();
     }
-
     @Override
     protected void renderGameFrame() {
         ObservableList<Node> rootChildren = scene.getRoot().getChildrenUnmodifiable();
@@ -707,6 +735,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
             player1.setAlive(true);
             player1.setLogicRotation(0.0);
             player1.setDisplayRotation(0.0);
+            player1.activateShield(3.0);
         }
 
         if (!player2.isAlive() && player2Lives > 0) {
@@ -717,6 +746,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
             player2.setAlive(true);
             player2.setLogicRotation(180.0);
             player2.setDisplayRotation(180.0);
+            player2.activateShield(3.0);
         }
     }
 
