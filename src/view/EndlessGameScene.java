@@ -1,12 +1,13 @@
 package view;
 
 import infra.GameConfig;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.paint.*;
 import map.MapFactory; // ✅ 1. 引入工厂
 import map.MapModel;
 import model.*;
 import model.Tank.TankType;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -243,7 +244,10 @@ public class EndlessGameScene extends BaseGameScene {
 
             // 2秒后进入下一波 (使用 JavaFX 线程安全方式)
             new Thread(() -> {
-                try { Thread.sleep(2000); } catch (InterruptedException e) {}
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                }
                 javafx.application.Platform.runLater(() -> startWave(currentWave + 1));
             }).start();
             return;
@@ -264,17 +268,38 @@ public class EndlessGameScene extends BaseGameScene {
 
         // 4. 检查玩家存活
         if (player != null && !player.isAlive()) {
-            isGameOver = true;
-            // 计算核心数据
-            long playTime = (System.currentTimeMillis() - gameStartTime) / 1000;
-            int itemCount = itemSpawner.getCollectedItems().size();
-            boolean isWin = currentWave >= 10;
-            // 关键：调用父类方法，触发 RankingManager 写入记录
-            writeGameFinalRecord(isWin, score, playTime, itemCount);
-            System.out.println("无尽模式游戏结束，记录已提交至 RankingManager");
+            if (!isGameOver) { // 确保只触发一次
+                isGameOver = true;
+                System.out.println("💀 游戏结束！");
+
+                // 停止背景音乐
+                view.SoundManager.getInstance().stopBackgroundMusic();
+
+                // --- 核心：直接在这里绑定一次性按键逻辑 ---
+
+                // 1. 绑定 R 键 -> 重新开始
+                inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.R, () -> {
+                    System.out.println("🔄 正在重新部署坦克...");
+                    this.resetScene(); // 调用父类的重置
+                });
+
+                // 2. 绑定 ESC 键 -> 返回主菜单
+                // 虽然 InputHandler 默认 ESC 是打开设置，但 bindKeyPressOnce 优先级更高且会 consume 事件
+                inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.ESCAPE, () -> {
+                    System.out.println("🏠 撤离战场...");
+                    gameLoop.stop(); // 停止发动机
+                    // 方案 B: 直接跳转回 AppLauncher 重新展示主菜单
+                    try {
+                        game.AppLauncher mainMenu = new game.AppLauncher();
+                        mainMenu.start(primaryStage);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+            return;
         }
     }
-
     /**
      * 新增：封装无尽模式游戏记录写入逻辑
      */
@@ -689,18 +714,109 @@ public class EndlessGameScene extends BaseGameScene {
     }
 
     private void drawGameOver(GraphicsContext gc) {
+        double screenW = GameConfig.SCREEN_WIDTH;
+        double screenH = GameConfig.SCREEN_HEIGHT;
+        double centerX = screenW / 2;
+        double centerY = screenH / 2;
+
         gc.save();
-        gc.setFill(Color.rgb(0, 0, 0, 0.6)); // 半透明黑底
-        gc.fillRect(0, 0, WIDTH, HEIGHT);
 
-        gc.setFill(Color.RED);
-        gc.setFont(GAME_OVER_FONT);
-        gc.fillText("GAME OVER", WIDTH/2 - 140, HEIGHT/2);
+        // 1. 深度沉浸背景：深红色渐变叠加网格线
+        gc.setFill(new RadialGradient(0, 0, centerX, centerY, screenW * 0.8, false, CycleMethod.NO_CYCLE,
+                new Stop(0, Color.rgb(60, 0, 0, 0.85)),
+                new Stop(1, Color.BLACK)));
+        gc.fillRect(0, 0, screenW, screenH);
 
+        // 绘制微弱的战术网格
+        gc.setStroke(Color.rgb(255, 255, 255, 0.05));
+        gc.setLineWidth(1);
+        for(int i=0; i<screenW; i+=40) gc.strokeLine(i, 0, i, screenH);
+        for(int i=0; i<screenH; i+=40) gc.strokeLine(0, i, screenW, i);
+
+        // 2. 核心大标题：MISSION FAILED (带激光描边感)
+        gc.setFont(Font.font("Impact", 100));
+
+        // 第一层：底层红色强光
+        gc.setEffect(new DropShadow(30, Color.RED));
+        gc.setFill(Color.web("#7f0000"));
+        gc.fillText("MISSION FAILED", centerX - 290, centerY - 120);
+
+        // 第二层：上层亮红字体
+        gc.setEffect(null);
+        gc.setFill(new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+                new Stop(0, Color.RED), new Stop(1, Color.web("#4d0000"))));
+        gc.fillText("MISSION FAILED", centerX - 293, centerY - 123);
+
+        // 3. 数据结算面板 (金属框架风格)
+        double panelW = 500;
+        double panelH = 180;
+        double px = centerX - panelW / 2;
+        double py = centerY - 40;
+
+        // 面板底色：半透明深色
+        gc.setFill(Color.rgb(20, 20, 20, 0.9));
+        gc.fillRoundRect(px, py, panelW, panelH, 10, 10);
+
+        // 面板金属边框：使用亮黄色 (FBC531)
+        gc.setStroke(Color.web("#fbc531"));
+        gc.setLineWidth(3);
+        gc.strokeRoundRect(px, py, panelW, panelH, 10, 10);
+
+        // 装饰角标 (增加机械感)
+        gc.setFill(Color.web("#fbc531"));
+        gc.fillRect(px, py, 20, 20); // 左上
+        gc.fillRect(px + panelW - 20, py + panelH - 20, 20, 20); // 右下
+
+        // 绘制文字
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 30));
         gc.setFill(Color.WHITE);
-        gc.setFont(Font.font("Consolas", 30));
-        gc.fillText("Final Wave: " + currentWave, WIDTH/2 - 100, HEIGHT/2 + 60);
-        gc.fillText("Total Score: " + score, WIDTH/2 - 100, HEIGHT/2 + 100);
+        gc.fillText("SURVIVED WAVES:", px + 40, py + 70);
+        gc.fillText("TOTAL SCORE:", px + 40, py + 130);
+
+        // 动态数值展示
+        gc.setFill(Color.web("#fbc531"));
+        gc.setFont(Font.font("Consolas", FontWeight.BOLD, 35));
+        gc.fillText(String.valueOf(currentWave), px + 330, py + 70);
+        gc.fillText(String.valueOf(score), px + 330, py + 130);
+
+        // 4. 底部操作提示栏
+        // 提示条背景
+        gc.setFill(Color.rgb(255, 255, 255, 0.1));
+        gc.fillRect(0, screenH - 100, screenW, 100);
+
+        // 绘制带有闪烁感的按键图标
+        drawModernHint(gc, "R", "REDEPLOY (重新部署)", centerX - 250, screenH - 45, Color.LIME);
+        drawModernHint(gc, "ESC", "ABORT (撤离)", centerX + 80, screenH - 45, Color.WHITE);
+
+        gc.restore();
+    }
+
+    /**
+     * 现代感按键提示绘制
+     */
+    private void drawModernHint(GraphicsContext gc, String key, String text, double x, double y, Color themeColor) {
+        gc.save();
+
+        // 按键背景
+        gc.setFill(themeColor);
+        gc.fillRoundRect(x, y - 30, 60, 40, 5, 5);
+
+        // 按键字母
+        gc.setFill(Color.BLACK);
+        gc.setFont(Font.font("Consolas", FontWeight.BLACK, 24));
+        gc.fillText(key, x + (key.length() == 1 ? 22 : 10), y - 2);
+
+        // 动作说明
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 22));
+        gc.fillText(text, x + 75, y - 2);
+
+        // 添加一个小呼吸动画效果的影子
+        gc.setEffect(new DropShadow(10, themeColor));
+        gc.setStroke(themeColor);
+        gc.setLineWidth(1);
+        gc.strokeRoundRect(x, y - 30, 60, 40, 5, 5);
+
         gc.restore();
     }
 
@@ -719,4 +835,5 @@ public class EndlessGameScene extends BaseGameScene {
         startWave(currentWave);
         resumeGameProcess(); // 重置后恢复游戏
     }
+
 }
