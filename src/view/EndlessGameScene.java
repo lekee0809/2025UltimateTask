@@ -288,9 +288,13 @@ public class EndlessGameScene extends BaseGameScene {
                 inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.ESCAPE, () -> {
                     System.out.println("🏠 撤离战场...");
                     gameLoop.stop(); // 停止发动机
-                    // 切换回主菜单
-                    view.StartScene startScene = new view.StartScene(primaryStage);
-                    primaryStage.setScene(startScene.getScene());
+                    // 方案 B: 直接跳转回 AppLauncher 重新展示主菜单
+                    try {
+                        game.AppLauncher mainMenu = new game.AppLauncher();
+                        mainMenu.start(primaryStage);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 });
             }
             return;
