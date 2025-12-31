@@ -203,18 +203,25 @@ public class Item {
                     System.out.println("💪 拾取火力道具：伤害翻倍！");
                 }
 
-                // 启动一个倒计时线程，10秒后恢复属性
+                // 2. 【关键修改】开启一个"新线程"去等待
+                // 绝对不能直接写 Thread.sleep，否则游戏会卡死！
                 new Thread(() -> {
                     try {
-                        Thread.sleep(10000); // 10秒 Buff 时间
-                        if (player.isAlive()) {
-                            player.resetStats(); // 恢复出厂设置
-                            System.out.println("Buff 效果结束，属性已恢复");
-                        }
+                        // 在后台线程里睡 10秒 (或者你设定的时间)
+                        Thread.sleep(10000);
+
+                        // 醒来后，恢复属性
+                        // 为了安全，建议用 Platform.runLater 切回主线程执行恢复
+                        javafx.application.Platform.runLater(() -> {
+                            if (player.isAlive()) {
+                                player.resetStats();
+                                System.out.println("Buff 效果结束，属性已恢复");
+                            }
+                        });
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                }).start();
+                }).start(); // <--- 别忘了这句 .start()，让线程跑起来
 
                 return true;
             // ==========================================

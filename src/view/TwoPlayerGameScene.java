@@ -502,12 +502,18 @@ public class TwoPlayerGameScene extends BaseGameScene {
         player1.setHealth(3);
         player1.setAlive(true);
 
+        player1.buffFireRate(600);
+        player1.activateShield(3.0);
+
         player2 = new NormalTank(PLAYER2_BIRTH_X, PLAYER2_BIRTH_Y);
         player2.setSpeed(3);
         player2.setHealth(3);
         player2.setAlive(true);
         player2.setLogicRotation(180.0);
         player2.setDisplayRotation(180.0);
+
+        player2.buffFireRate(600);
+        player2.activateShield(3.0);
     }
 
     private void bindTwoPlayerInput() {
@@ -729,6 +735,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
             player1.setAlive(true);
             player1.setLogicRotation(0.0);
             player1.setDisplayRotation(0.0);
+            player1.activateShield(3.0);
         }
 
         if (!player2.isAlive() && player2Lives > 0) {
@@ -739,6 +746,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
             player2.setAlive(true);
             player2.setLogicRotation(180.0);
             player2.setDisplayRotation(180.0);
+            player2.activateShield(3.0);
         }
     }
 
