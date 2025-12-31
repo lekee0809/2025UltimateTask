@@ -478,14 +478,6 @@ public class TwoPlayerGameScene extends BaseGameScene {
         scene.setOnKeyPressed(e -> {
             if (gameOver) return;
 
-            // 新增：ESC 键触发暂停
-            if (e.getCode() == KeyCode.ESCAPE) {
-                if (!GameConfig.isGamePaused()) { // 未暂停时才触发
-                    this.pauseGameProcess();
-                    settingsWindow.show(); // 显示设置窗口
-                }
-                return; // 避免和其他按键冲突
-            }
 
             switch (e.getCode()) {
                 case W: if (player1.isAlive()) player1.setMovingForward(true); break;
