@@ -53,7 +53,7 @@ public class GameConfig {
     // 在 GameConfig 类中添加：
     public static final int PLAYER_HEALTH = 100;
     public static final int PLAYER_FIRE_COOLDOWN =200; // 0.05秒一发
-    public static final int PLAYER_BULLET_DAMAGE = 100;
+    public static final int PLAYER_BULLET_DAMAGE = 50;
 
     // === Enemy Stats (数值体系) ===
 

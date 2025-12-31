@@ -13,6 +13,7 @@ import map.GameLevelConfig;
 import map.EnemySpawn;
 import model.*;
 import model.Tank.TankType;
+import ranking.PlayerRecord;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -1225,5 +1226,10 @@ public class StageGameScene extends BaseGameScene {
             }
         }
         return false;
+    }
+
+    @Override
+    protected PlayerRecord.GameMode getCurrentGameMode() {
+        return null;
     }
 }

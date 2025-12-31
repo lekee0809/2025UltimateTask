@@ -194,12 +194,12 @@ public class Item {
                 if (random.nextBoolean()) {
                     // 效果A：加特林模式 (射速极快)
                     // 假设原射速 200ms，现在改为 100ms
-                    player.buffFireRate(100);
+                    player.buffFireRate(50);
                     System.out.println("⚡ 拾取加速道具：射速提升！");
                 } else {
                     // 效果B：巨炮模式 (伤害翻倍)
                     // 假设原伤害 20，现在改为 40
-                    player.buffDamage(40);
+                    player.buffDamage(1000);
                     System.out.println("💪 拾取火力道具：伤害翻倍！");
                 }
 

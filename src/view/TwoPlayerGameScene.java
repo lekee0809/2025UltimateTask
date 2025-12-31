@@ -296,21 +296,61 @@ public class TwoPlayerGameScene extends BaseGameScene {
         timeline.play();
     }
 
+    // ==========================================
+    //   【优化】道具生成：防卡墙安全检查
+    // ==========================================
     private void spawnRandomItem() {
         if (gameOver) return;
 
-        // 在地图上随机位置生成道具
-        double x = 50 + Math.random() * (GameConfig.SCREEN_WIDTH - 100);
-        double y = 50 + Math.random() * (GameConfig.SCREEN_HEIGHT - 100);
+        // 尝试 20 次寻找一个合法位置
+        for (int i = 0; i < 20; i++) {
+            // 随机坐标
+            double x = 50 + Math.random() * (GameConfig.SCREEN_WIDTH - 100);
+            double y = 50 + Math.random() * (GameConfig.SCREEN_HEIGHT - 100);
 
-        // 随机选择道具类型
-        ItemType type = getRandomItemType();
+            // 检查该位置是否是空地
+            if (isValidItemPosition(x, y)) {
+                // 随机选择道具类型
+                ItemType type = getRandomItemType();
 
-        // 生成道具
-        itemSpawner.spawnItemAt(x, y, type);
-        System.out.println("🎁 双人模式生成随机道具: " + type.getName() + " 在位置 (" + x + ", " + y + ")");
+                // 生成道具 (居中修正)
+                // 确保道具在格子中间，而不是压在网格线上
+                double gridX = (int)(x / GameConfig.GRID_SIZE) * GameConfig.GRID_SIZE;
+                double gridY = (int)(y / GameConfig.GRID_SIZE) * GameConfig.GRID_SIZE;
+
+                itemSpawner.spawnItemAt(gridX, gridY, type);
+                System.out.println("🎁 双人模式生成道具: " + type.getName() + " @ (" + (int)gridX + "," + (int)gridY + ")");
+                return; // 成功生成后直接结束
+            }
+        }
+        System.out.println("⚠️ 道具生成失败：未找到空闲位置");
     }
 
+    /**
+     * 【新增】检查坐标是否适合生成道具
+     * 必须是空地 (EMPTY) 或 草地 (GRASS)
+     */
+    private boolean isValidItemPosition(double x, double y) {
+        if (twoPlayerTileMap == null) return true; // 防空指针
+
+        int c = (int) (x / GameConfig.GRID_SIZE);
+        int r = (int) (y / GameConfig.GRID_SIZE);
+
+        // 边界检查
+        if (r < 0 || r >= GameConfig.MAP_ROWS || c < 0 || c >= GameConfig.MAP_COLS) {
+            return false;
+        }
+
+        Tile tile = twoPlayerTileMap[r][c];
+        if (tile == null) return true;
+
+        // 获取地形类型
+        TileType type = tile.getType();
+
+        // 允许生成在：空地、草地
+        // 禁止生成在：墙、钢块、水
+        return type == TileType.EMPTY || type == TileType.GRASS;
+    }
     // 添加辅助方法获取随机道具类型
     private ItemType getRandomItemType() {
         double rand = Math.random();
@@ -457,12 +497,12 @@ public class TwoPlayerGameScene extends BaseGameScene {
 
     private void initTwoPlayers() {
         player1 = new PlayerTank(PLAYER1_BIRTH_X, PLAYER1_BIRTH_Y);
-        player1.setSpeed(5);
+        player1.setSpeed(3);
         player1.setHealth(3);
         player1.setAlive(true);
 
         player2 = new NormalTank(PLAYER2_BIRTH_X, PLAYER2_BIRTH_Y);
-        player2.setSpeed(5);
+        player2.setSpeed(3);
         player2.setHealth(3);
         player2.setAlive(true);
         player2.setLogicRotation(180.0);
