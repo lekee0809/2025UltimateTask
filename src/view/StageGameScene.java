@@ -1344,4 +1344,108 @@ public class StageGameScene extends BaseGameScene {
         // 【关键遗漏：添加这行，写入后将锁置为true，防止重复写入】
         isRecordWritten=true;
     }
+
+    public PlayerTank getPlayer() {
+        return player;
+    }
+
+    public void setPlayer(PlayerTank player) {
+        this.player = player;
+    }
+
+    public void setEnemyTanks(List<Tank> enemyTanks) {
+        this.enemyTanks = enemyTanks;
+    }
+
+    public void setBullets(List<Bullet> bullets) {
+        this.bullets = bullets;
+    }
+
+    public MapModel getMapModel() {
+        return mapModel;
+    }
+
+    public void setMapModel(MapModel mapModel) {
+        this.mapModel = mapModel;
+    }
+
+    public Tile[][] getMap() {
+        return map;
+    }
+
+    public void setMap(Tile[][] map) {
+        this.map = map;
+    }
+
+    public void setCurrentLevel(int currentLevel) {
+        this.currentLevel = currentLevel;
+    }
+
+    public void setPlayerScore(int playerScore) {
+        this.playerScore = playerScore;
+    }
+
+    public void setPlayerHealth(int playerHealth) {
+        this.playerHealth = playerHealth;
+    }
+
+    public long getLevelStartTime() {
+        return levelStartTime;
+    }
+
+    public void setLevelStartTime(long levelStartTime) {
+        this.levelStartTime = levelStartTime;
+    }
+
+    public void setGameElapsedTime(long gameElapsedTime) {
+        this.gameElapsedTime = gameElapsedTime;
+    }
+
+    public void setGameOver(boolean gameOver) {
+        isGameOver = gameOver;
+    }
+
+    public void setLevelComplete(boolean levelComplete) {
+        isLevelComplete = levelComplete;
+    }
+
+    public int getTargetScore() {
+        return targetScore;
+    }
+
+    public void setTargetScore(int targetScore) {
+        this.targetScore = targetScore;
+    }
+
+    public Random getRandom() {
+        return random;
+    }
+
+    public void setRandom(Random random) {
+        this.random = random;
+    }
+
+    public long getGameGlobalStartTime() {
+        return gameGlobalStartTime;
+    }
+
+    public void setGameGlobalStartTime(long gameGlobalStartTime) {
+        this.gameGlobalStartTime = gameGlobalStartTime;
+    }
+
+    public boolean isRecordWritten() {
+        return isRecordWritten;
+    }
+
+    public void setRecordWritten(boolean recordWritten) {
+        isRecordWritten = recordWritten;
+    }
+
+    public long getLastEnemyAIUpdateTime() {
+        return lastEnemyAIUpdateTime;
+    }
+
+    public void setLastEnemyAIUpdateTime(long lastEnemyAIUpdateTime) {
+        this.lastEnemyAIUpdateTime = lastEnemyAIUpdateTime;
+    }
 }

@@ -188,4 +188,56 @@ public class SoundManager {
             playGameMusic();
         }
     }
+
+    public static void setInstance(SoundManager instance) {
+        SoundManager.instance = instance;
+    }
+
+    public MediaPlayer getBackgroundPlayer() {
+        return backgroundPlayer;
+    }
+
+    public void setBackgroundPlayer(MediaPlayer backgroundPlayer) {
+        this.backgroundPlayer = backgroundPlayer;
+    }
+
+    public MediaPlayer getGameMusicPlayer() {
+        return gameMusicPlayer;
+    }
+
+    public void setGameMusicPlayer(MediaPlayer gameMusicPlayer) {
+        this.gameMusicPlayer = gameMusicPlayer;
+    }
+
+    public Map<String, String> getSoundPathMap() {
+        return soundPathMap;
+    }
+
+    public void setSoundPathMap(Map<String, String> soundPathMap) {
+        this.soundPathMap = soundPathMap;
+    }
+
+    public Map<String, AudioClip> getLoadedEffects() {
+        return loadedEffects;
+    }
+
+    public void setLoadedEffects(Map<String, AudioClip> loadedEffects) {
+        this.loadedEffects = loadedEffects;
+    }
+
+    public double getBgmVolume() {
+        return bgmVolume;
+    }
+
+    public void setBgmVolume(double bgmVolume) {
+        this.bgmVolume = bgmVolume;
+    }
+
+    public double getSfxVolume() {
+        return sfxVolume;
+    }
+
+    public void setSfxVolume(double sfxVolume) {
+        this.sfxVolume = sfxVolume;
+    }
 }

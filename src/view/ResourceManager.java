@@ -61,5 +61,7 @@ public class ResourceManager {
         }
     }
 
-
+    public static void setInstance(ResourceManager instance) {
+        ResourceManager.instance = instance;
+    }
 }
