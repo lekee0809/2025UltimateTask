@@ -45,6 +45,11 @@ public abstract class Tank extends Entity {
     protected int bulletDamage;
     protected double bulletSpeed;
 
+    // 【新增】初始基准属性 (用于道具过期后恢复)
+    protected int baseFireCooldown;
+    protected int baseBulletDamage;
+    protected double baseBulletSpeed;
+
     // ========== 视觉资源 ==========
     protected Image tankImage;
     protected String imagePath;
@@ -77,6 +82,10 @@ public abstract class Tank extends Entity {
         this.bulletDamage = bulletDamage;
         this.bulletSpeed = bulletSpeed;
         this.scoreValue = scoreValue;
+        // 2. 【新增】存档基准属性 (备份一份出厂设置)
+        this.baseFireCooldown = fireCooldown;
+        this.baseBulletDamage = bulletDamage;
+        this.baseBulletSpeed = bulletSpeed;
 
         setInitialRotation();
         loadImage();
@@ -311,6 +320,34 @@ public abstract class Tank extends Entity {
         Tile t = map[r][c];
         // 墙和铁块会堵住枪口
         return t != null && (t.getType() == TileType.STONE || t.getType() == TileType.BRICK);
+    }
+
+    /**
+     * 临时改变射速 (数值越小射速越快)
+     * @param newCooldown 新的冷却时间 (ms)
+     */
+    public void buffFireRate(int newCooldown) {
+        this.fireCooldown = newCooldown;
+        System.out.println("🔥 射速已提升！当前冷却: " + this.fireCooldown + "ms");
+    }
+
+    /**
+     * 临时改变伤害
+     * @param newDamage 新的伤害值
+     */
+    public void buffDamage(int newDamage) {
+        this.bulletDamage = newDamage;
+        System.out.println("💪 伤害已提升！当前伤害: " + this.bulletDamage);
+    }
+
+    /**
+     * 道具效果结束，恢复所有属性到出厂设置
+     */
+    public void resetStats() {
+        this.fireCooldown = this.baseFireCooldown;
+        this.bulletDamage = this.baseBulletDamage;
+        this.bulletSpeed = this.baseBulletSpeed;
+        // System.out.println("⚡ 道具效果结束，属性已恢复。");
     }
 
     // ========== 辅助绘制 ==========

@@ -64,12 +64,15 @@ public class Item {
         double rand = random.nextDouble();
         ItemType type;
 
-        if (rand < 0.4) {
-            type = ItemType.HEAL;           // 0-0.4：回血道具
-        } else if (rand < 0.7) {
-            type = ItemType.INVINCIBLE;     // 0.4-0.7：无敌道具
+        // 调整概率分布
+        if (rand < 0.3) {
+            type = ItemType.HEAL;           // 30% 回血
+        } else if (rand < 0.5) {
+            type = ItemType.INVINCIBLE;     // 20% 无敌
+        } else if (rand < 0.8) {
+            type = ItemType.BOMB;           // 30% 炸弹
         } else {
-            type = ItemType.BOMB;           // 0.7-1.0：炸弹道具
+            type = ItemType.BUFF;           // 20% 属性增强 (新增!)
         }
 
         return new Item(x, y, type);
@@ -156,6 +159,8 @@ public class Item {
                 tankTop < itemBottom && tankBottom > itemTop;
     }
 
+
+
     /**
      * 应用道具效果到玩家坦克
      * 返回true表示道具被成功使用
@@ -201,6 +206,8 @@ public class Item {
                 return false;
         }
     }
+
+
     /**
      * 应用炸弹效果到所有敌人坦克
      */
