@@ -67,7 +67,8 @@ public class EndlessGameScene extends BaseGameScene {
         score = 0;
         currentWave = 1;
         isGameOver = false;
-
+        // ========== 新增：播放无尽模式背景音乐 ==========
+        SoundManager.getInstance().playGameMusic(); // 与闯关模式共用同一首音乐，可自定义路径
         System.out.println("🔥 无尽模式启动！准备迎接挑战...");
         startWave(currentWave);
     }
@@ -485,6 +486,8 @@ public class EndlessGameScene extends BaseGameScene {
             if (inputHandler.isJPressed()) {
                 Bullet b = player.tryFire(map);
                 if (b != null) bullets.add(b);
+                // ========== 新增：播放子弹发射音效 ==========
+                SoundManager.getInstance().playSoundEffect("explosion.wav"); // 复用子弹音效
             }
             player.update(map);
         }
@@ -834,6 +837,9 @@ public class EndlessGameScene extends BaseGameScene {
         gameStartTime = System.currentTimeMillis(); // 重置游戏开始时间
         startWave(currentWave);
         resumeGameProcess(); // 重置后恢复游戏
+
+        // ========== 新增：重置时恢复背景音乐播放（防止重置后音乐停止） ==========
+        SoundManager.getInstance().resumeGameMusic();
     }
 
     public PlayerTank getPlayer() {
