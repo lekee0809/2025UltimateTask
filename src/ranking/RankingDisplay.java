@@ -3,20 +3,49 @@ package ranking;
 import infra.GameConfig;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+// 封装带排名的排行榜数据
+class RankedPlayerRecord {
+    private final SimpleStringProperty rank;
+    private final SimpleIntegerProperty score;
+    private final SimpleIntegerProperty playTime;
+    private final SimpleStringProperty finishTimeStr;
+
+    public RankedPlayerRecord(int rank, PlayerRecord originalRecord) {
+        this.rank = new SimpleStringProperty(String.format("%02d", rank));
+        this.score = new SimpleIntegerProperty(originalRecord.getScore());
+        this.playTime = new SimpleIntegerProperty(originalRecord.getPlayTime());
+        this.finishTimeStr = new SimpleStringProperty(originalRecord.getFinishTimeStr());
+    }
+
+    // Getter方法
+    public String getRank() { return rank.get(); }
+    public int getScore() { return score.get(); }
+    public int getPlayTime() { return playTime.get(); }
+    public String getFinishTimeStr() { return finishTimeStr.get(); }
+}
 
 public class RankingDisplay {
 
@@ -24,18 +53,44 @@ public class RankingDisplay {
         Stage stage = new Stage();
         stage.setTitle(gameMode.getModeName() + " 排行榜");
 
-        // ===== 1. 标题：增加霓虹发光感 =====
-        Label title = new Label(gameMode.getModeName().toUpperCase() + " · TOP 10");
+        // 标题
+        Label title = new Label(gameMode.getModeName().toUpperCase() + " · TOP 50");
         title.setFont(Font.font("System", FontWeight.EXTRA_BOLD, 36));
         title.setTextFill(Color.WHITE);
-        // 关键：蓝色外发光让文字在深色背景下极度清晰
         title.setEffect(new DropShadow(20, Color.web("#00d4ff")));
 
-        // ===== 2. 表格主体优化 =====
-        TableView<PlayerRecord> table = new TableView<>();
-        table.setPrefSize(GameConfig.SCREEN_WIDTH - 80, GameConfig.SCREEN_HEIGHT - 180);
+        // 排序控件
+        ComboBox<String> sortComboBox = new ComboBox<>();
+        sortComboBox.getItems().addAll(
+                "分数从高到低（默认）",
+                "分数从低到高",
+                "时间从新到旧",
+                "时间从旧到新"
+        );
+        sortComboBox.setValue("分数从高到低（默认）");
+        sortComboBox.setPrefWidth(200);
+        sortComboBox.setStyle(
+                "-fx-background-color: rgba(255,255,255,0.1);" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-size: 14px;"
+        );
 
-        // 彻底去除原生背景，改用深色半透明
+        Button sortButton = new Button("执行排序");
+        sortButton.setStyle(
+                "-fx-background-color: #00d4ff;" +
+                        "-fx-text-fill: black;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 5 15;" +
+                        "-fx-background-radius: 5;"
+        );
+
+        HBox sortBox = new HBox(10, sortComboBox, sortButton);
+        sortBox.setAlignment(Pos.CENTER);
+        sortBox.setPadding(new Insets(0, 0, 20, 0));
+
+        // 表格主体（泛型指定为 RankedPlayerRecord）
+        TableView<RankedPlayerRecord> table = new TableView<>();
+        table.setPrefSize(GameConfig.SCREEN_WIDTH - 80, GameConfig.SCREEN_HEIGHT - 220);
         table.setStyle(
                 "-fx-background-color: transparent;" +
                         "-fx-border-color: rgba(255,255,255,0.1);" +
@@ -43,41 +98,57 @@ public class RankingDisplay {
                         "-fx-border-radius: 10;"
         );
 
-        // --- 列定义（增加居中和对比度） ---
-        TableColumn<PlayerRecord, String> rankCol = createStyledColumn("排名", 0.15);
-        rankCol.setCellValueFactory(cell -> {
-            int rank = table.getItems().indexOf(cell.getValue()) + 1;
-            return new SimpleStringProperty(String.format("%02d", rank));
-        });
+        // --- 列定义（泛型与 TableView 保持一致） ---
+        TableColumn<RankedPlayerRecord, String> rankCol = new TableColumn<>("排名");
+        rankCol.setPrefWidth((GameConfig.SCREEN_WIDTH - 100) * 0.15);
+        rankCol.setStyle("-fx-alignment: CENTER; -fx-font-size: 15px; -fx-text-fill: #e0e0e0;");
+        rankCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().getRank()));
 
-        TableColumn<PlayerRecord, Integer> scoreCol = createStyledColumn("得分", 0.25);
+        TableColumn<RankedPlayerRecord, Integer> scoreCol = new TableColumn<>("得分");
+        scoreCol.setPrefWidth((GameConfig.SCREEN_WIDTH - 100) * 0.25);
+        scoreCol.setStyle("-fx-alignment: CENTER; -fx-font-size: 15px; -fx-text-fill: #e0e0e0;");
         scoreCol.setCellValueFactory(cell -> new SimpleIntegerProperty(cell.getValue().getScore()).asObject());
 
-        TableColumn<PlayerRecord, Integer> timeCol = createStyledColumn("时长(s)", 0.25);
+        TableColumn<RankedPlayerRecord, Integer> timeCol = new TableColumn<>("时长(s)");
+        timeCol.setPrefWidth((GameConfig.SCREEN_WIDTH - 100) * 0.25);
+        timeCol.setStyle("-fx-alignment: CENTER; -fx-font-size: 15px; -fx-text-fill: #e0e0e0;");
         timeCol.setCellValueFactory(cell -> new SimpleIntegerProperty(cell.getValue().getPlayTime()).asObject());
 
-        TableColumn<PlayerRecord, String> finishCol = createStyledColumn("达成时间", 0.35);
+        TableColumn<RankedPlayerRecord, String> finishCol = new TableColumn<>("达成时间");
+        finishCol.setPrefWidth((GameConfig.SCREEN_WIDTH - 100) * 0.35);
+        finishCol.setStyle("-fx-alignment: CENTER; -fx-font-size: 15px; -fx-text-fill: #e0e0e0;");
         finishCol.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue().getFinishTimeStr()));
 
         table.getColumns().addAll(rankCol, scoreCol, timeCol, finishCol);
-        table.getItems().addAll(RankingManager.loadAllRecords(gameMode));
 
-        // ===== 3. 行样式：动态高亮（解决看不清的关键） =====
+        // 加载并排序数据
+        List<PlayerRecord> rawRecords = RankingManager.loadAllRecords(gameMode);
+        List<PlayerRecord> defaultSortedPlayerRecords = new ArrayList<>(rawRecords);
+        defaultSortedPlayerRecords.sort(
+                Comparator.comparingInt(PlayerRecord::getScore).reversed()
+                        .thenComparingLong(PlayerRecord::getFinishTimeStamp).reversed()
+        );
+
+        ObservableList<RankedPlayerRecord> defaultRankedRecords = FXCollections.observableArrayList();
+        for (int i = 0; i < defaultSortedPlayerRecords.size(); i++) {
+            defaultRankedRecords.add(new RankedPlayerRecord(i + 1, defaultSortedPlayerRecords.get(i)));
+        }
+        table.setItems(defaultRankedRecords);
+
+        // 行样式
         table.setRowFactory(tv -> {
-            TableRow<PlayerRecord> row = new TableRow<>() {
+            TableRow<RankedPlayerRecord> row = new TableRow<>() {
                 @Override
-                protected void updateItem(PlayerRecord item, boolean empty) {
+                protected void updateItem(RankedPlayerRecord item, boolean empty) {
                     super.updateItem(item, empty);
                     if (item == null || empty) {
                         setStyle("-fx-background-color: transparent;");
                     } else {
-                        // 默认行背景：极浅的白色透明，增加层次感
                         applyEnhancedRowStyle(this);
                     }
                 }
             };
 
-            // 悬停效果：加强对比
             row.hoverProperty().addListener((obs, oldVal, hovering) -> {
                 if (!row.isEmpty()) {
                     if (hovering) {
@@ -90,16 +161,56 @@ public class RankingDisplay {
             return row;
         });
 
-        // ===== 4. 整体容器：渐变背景 =====
-        VBox root = new VBox(35, title, table);
+        // 排序按钮事件
+        sortButton.setOnAction(e -> {
+            if (rawRecords.isEmpty()) {
+                return;
+            }
+
+            List<PlayerRecord> tempPlayerRecords = new ArrayList<>(rawRecords);
+            String selectedSort = sortComboBox.getValue();
+            if (selectedSort != null) {
+                switch (selectedSort) {
+                    case "分数从高到低（默认）":
+                        tempPlayerRecords.sort(
+                                Comparator.comparingInt(PlayerRecord::getScore)
+                                        .thenComparingLong(PlayerRecord::getFinishTimeStamp).reversed()
+                        );
+                        break;
+                    case "分数从低到高":
+                        tempPlayerRecords.sort(
+                                Comparator.comparingInt(PlayerRecord::getScore)
+                                        .thenComparingLong(PlayerRecord::getFinishTimeStamp)
+                        );
+                        break;
+                    case "时间从新到旧":
+                        tempPlayerRecords.sort(
+                                Comparator.comparingLong(PlayerRecord::getFinishTimeStamp).reversed()
+                        );
+                        break;
+                    case "时间从旧到新":
+                        tempPlayerRecords.sort(
+                                Comparator.comparingLong(PlayerRecord::getFinishTimeStamp)
+                        );
+                        break;
+                }
+            }
+
+            ObservableList<RankedPlayerRecord> tempRankedRecords = FXCollections.observableArrayList();
+            for (int i = 0; i < tempPlayerRecords.size(); i++) {
+                tempRankedRecords.add(new RankedPlayerRecord(i + 1, tempPlayerRecords.get(i)));
+            }
+            table.setItems(tempRankedRecords);
+            table.refresh();
+        });
+
+        // 整体布局
+        VBox root = new VBox(35, title, sortBox, table);
         root.setAlignment(Pos.TOP_CENTER);
         root.setPadding(new Insets(40));
-        // 使用更深邃的黑蓝渐变，衬托亮色文字
         root.setStyle("-fx-background-color: linear-gradient(to bottom right, #0a0e17, #1a202c);");
 
         Scene scene = new Scene(root, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
-
-        // 关键：表头强制美化
         scene.getRoot().applyCss();
         styleHeader(table);
 
@@ -107,31 +218,23 @@ public class RankingDisplay {
         stage.show();
     }
 
-    // 辅助方法：创建列并设置居中对齐样式
-    private static <T> TableColumn<PlayerRecord, T> createStyledColumn(String name, double pct) {
-        TableColumn<PlayerRecord, T> col = new TableColumn<>(name);
-        col.setPrefWidth((GameConfig.SCREEN_WIDTH - 100) * pct);
-        // 让文字在单元格内居中
-        col.setStyle("-fx-alignment: CENTER; -fx-font-size: 15px; -fx-text-fill: #e0e0e0;");
-        return col;
-    }
-
-    // 核心样式逻辑：前三名使用“发光字体色”而非“深背景色”
-    private static void applyEnhancedRowStyle(TableRow<PlayerRecord> row) {
+    // 行样式
+    private static void applyEnhancedRowStyle(TableRow<?> row) {
         int index = row.getIndex();
         String baseStyle = "-fx-border-color: rgba(255,255,255,0.05); -fx-border-width: 0 0 1 0; ";
 
-        if (index == 0) { // 冠军：金黄色字
+        if (index == 0) {
             row.setStyle(baseStyle + "-fx-background-color: rgba(255, 215, 0, 0.1); -fx-text-background-color: #ffda44;");
-        } else if (index == 1) { // 亚军：银色字
+        } else if (index == 1) {
             row.setStyle(baseStyle + "-fx-background-color: rgba(192, 192, 192, 0.08); -fx-text-background-color: #ffffff;");
-        } else if (index == 2) { // 季军：铜色字
+        } else if (index == 2) {
             row.setStyle(baseStyle + "-fx-background-color: rgba(205, 127, 50, 0.08); -fx-text-background-color: #ffab6e;");
         } else {
             row.setStyle(baseStyle + "-fx-background-color: transparent; -fx-text-background-color: #d1d5db;");
         }
     }
 
+    // 表头样式
     private static void styleHeader(TableView<?> table) {
         Node headerBg = table.lookup(".column-header-background");
         if (headerBg != null) {
