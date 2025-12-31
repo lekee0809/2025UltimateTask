@@ -1,12 +1,22 @@
 package item;
+
 /**
  * 道具类型枚举
- * 定义游戏中三种道具类型及其属性
+ * 定义游戏中四种道具类型及其属性
  */
 public enum ItemType {
-    HEAL(0, "回血", "images/lives.png",  0),     // 回血道具，立即生效
-    INVINCIBLE(1, "无敌", "images/buff.png",  3000), // 无敌道具，持续3秒
-    BOMB(2, "炸弹", "images/bullet.png", 0); // 炸弹道具，立即生效
+    // 0: 回血 (立即生效)
+    HEAL(0, "回血", "images/lives.png",  0),
+
+    // 1: 无敌 (持续5秒) - 已修正图片路径大小写(Buff.png)，防止加载失败
+    INVINCIBLE(1, "无敌", "images/Buff.png",  5000),
+
+    // 2: 炸弹 (立即生效) - 注意这里是逗号
+    BOMB(2, "炸弹", "images/bullet.png", 0),
+
+    // 3: 强化 (持续10秒) - 新增！用于提升射速或伤害
+    // 这里的图片用 bulletLimit.png 表示火力增强
+    BUFF(3, "强化", "images/bulletLimit.png", 10000);
 
     private final int code;           // 道具编码
     private final String name;        // 道具名称
