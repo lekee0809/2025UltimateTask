@@ -1,4 +1,3 @@
-
 package item;
 
 import infra.GameConfig;
@@ -159,12 +158,6 @@ public class Item {
                 tankTop < itemBottom && tankBottom > itemTop;
     }
 
-
-
-    /**
-     * 应用道具效果到玩家坦克
-     * 返回true表示道具被成功使用
-     */
     /**
      * 应用道具效果到玩家坦克
      * 返回true表示道具被成功使用
@@ -177,7 +170,6 @@ public class Item {
 
         switch (type) {
             case HEAL:
-                // ... (回血逻辑保持不变) ...
                 int healAmount = 50;
                 int newHealth = Math.min(player.getMaxHealth(), player.getHealth() + healAmount);
                 player.setHealth(newHealth);
@@ -185,22 +177,47 @@ public class Item {
                 return true;
 
             case INVINCIBLE:
-                // ================= 修改开始 =================
-                // 原来的代码可能是：player.activateInvincibility(type.getDuration());
-
-                // 【修改 1 & 2】：
-                // 直接调用 activateShield 方法 (这个方法在 Tank 类里，包含了无敌逻辑 + 金圈特效 + 闪烁)
-                // 传入 5.0 表示 5 秒
+                // 5秒金光护盾
                 player.activateShield(5.0);
-
                 System.out.println("拾取无敌道具，获得 5 秒无敌护盾！");
-                // ================= 修改结束 =================
                 return true;
 
             case BOMB:
-                // ... (炸弹逻辑保持不变) ...
                 System.out.println("拾取炸弹道具");
                 return true;
+
+            // ==========================================
+            //  【核心修复】 新增 BUFF 处理逻辑
+            // ==========================================
+            case BUFF:
+                // 随机一种增强效果
+                if (random.nextBoolean()) {
+                    // 效果A：加特林模式 (射速极快)
+                    // 假设原射速 200ms，现在改为 100ms
+                    player.buffFireRate(100);
+                    System.out.println("⚡ 拾取加速道具：射速提升！");
+                } else {
+                    // 效果B：巨炮模式 (伤害翻倍)
+                    // 假设原伤害 20，现在改为 40
+                    player.buffDamage(40);
+                    System.out.println("💪 拾取火力道具：伤害翻倍！");
+                }
+
+                // 启动一个倒计时线程，10秒后恢复属性
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(10000); // 10秒 Buff 时间
+                        if (player.isAlive()) {
+                            player.resetStats(); // 恢复出厂设置
+                            System.out.println("Buff 效果结束，属性已恢复");
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+
+                return true;
+            // ==========================================
 
             default:
                 return false;
@@ -226,8 +243,9 @@ public class Item {
                 System.out.println("  敌方坦克受到炸弹伤害，剩余血量: " + enemy.getHealth());
             }
         }
+    }
 
-    }/**
+    /**
      * 应用炸弹效果到单个目标（用于双人模式）
      * @param target 目标坦克
      * @param damage 造成的伤害
@@ -244,139 +262,37 @@ public class Item {
         }
     }
 
-
-
     // ===================== Getter方法 =====================
+    // ... (Getter方法保持不变，省略以节省篇幅，可以直接保留你原来的代码) ...
 
-    public ItemType getType() {
-        return type;
-    }
-
-    public double getX() {
-        return x;
-    }
-
-    public double getY() {
-        return y;
-    }
-
-    public double getWidth() {
-        return width;
-    }
-
-    public double getHeight() {
-        return height;
-    }
-
-    public boolean isActive() {
-        return active && !isExpired();
-    }
-
-    public long getSpawnTime() {
-        return spawnTime;
-    }
-
-    public long getMaxLifetime() {
-        return MAX_LIFETIME;
-    }
-
-    // ===================== 动画相关Getter方法 =====================
-
-    public ItemAnimationState getAnimationState() {
-        return animationState;
-    }
-
-    public float getAlpha() {
-        return alpha;
-    }
-
-    public float getScale() {
-        return scale;
-    }
-
-    public boolean isVisible() {
-        return visible;
-    }
-
-    /**
-     * 获取道具生存时间（毫秒）
-     */
-    public long getAliveTime() {
-        return System.currentTimeMillis() - spawnTime;
-    }
-
-    /**
-     * 获取道具剩余时间（毫秒）
-     */
-    public long getRemainingTime() {
-        return Math.max(0, MAX_LIFETIME - getAliveTime());
-    }
-
-    /**
-     * 获取道具作用时间（毫秒）
-     */
-    public int getEffectDuration() {
-        return type.getDuration();
-    }
-
-    public void setType(ItemType type) {
-        this.type = type;
-    }
-
-    public void setX(double x) {
-        this.x = x;
-    }
-
-    public void setY(double y) {
-        this.y = y;
-    }
-
-    public void setWidth(double width) {
-        this.width = width;
-    }
-
-    public void setHeight(double height) {
-        this.height = height;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
-
-    public void setSpawnTime(long spawnTime) {
-        this.spawnTime = spawnTime;
-    }
-
-    public void setAnimationState(ItemAnimationState animationState) {
-        this.animationState = animationState;
-    }
-
-    public void setAlpha(float alpha) {
-        this.alpha = alpha;
-    }
-
-    public void setScale(float scale) {
-        this.scale = scale;
-    }
-
-    public void setVisible(boolean visible) {
-        this.visible = visible;
-    }
-
-    public long getLastBlinkTime() {
-        return lastBlinkTime;
-    }
-
-    public void setLastBlinkTime(long lastBlinkTime) {
-        this.lastBlinkTime = lastBlinkTime;
-    }
-
-    public long getBlinkInterval() {
-        return blinkInterval;
-    }
-
-    public void setBlinkInterval(long blinkInterval) {
-        this.blinkInterval = blinkInterval;
-    }
+    public ItemType getType() { return type; }
+    public double getX() { return x; }
+    public double getY() { return y; }
+    public double getWidth() { return width; }
+    public double getHeight() { return height; }
+    public boolean isActive() { return active && !isExpired(); }
+    public long getSpawnTime() { return spawnTime; }
+    public long getMaxLifetime() { return MAX_LIFETIME; }
+    public ItemAnimationState getAnimationState() { return animationState; }
+    public float getAlpha() { return alpha; }
+    public float getScale() { return scale; }
+    public boolean isVisible() { return visible; }
+    public long getAliveTime() { return System.currentTimeMillis() - spawnTime; }
+    public long getRemainingTime() { return Math.max(0, MAX_LIFETIME - getAliveTime()); }
+    public int getEffectDuration() { return type.getDuration(); }
+    public void setType(ItemType type) { this.type = type; }
+    public void setX(double x) { this.x = x; }
+    public void setY(double y) { this.y = y; }
+    public void setWidth(double width) { this.width = width; }
+    public void setHeight(double height) { this.height = height; }
+    public void setActive(boolean active) { this.active = active; }
+    public void setSpawnTime(long spawnTime) { this.spawnTime = spawnTime; }
+    public void setAnimationState(ItemAnimationState animationState) { this.animationState = animationState; }
+    public void setAlpha(float alpha) { this.alpha = alpha; }
+    public void setScale(float scale) { this.scale = scale; }
+    public void setVisible(boolean visible) { this.visible = visible; }
+    public long getLastBlinkTime() { return lastBlinkTime; }
+    public void setLastBlinkTime(long lastBlinkTime) { this.lastBlinkTime = lastBlinkTime; }
+    public long getBlinkInterval() { return blinkInterval; }
+    public void setBlinkInterval(long blinkInterval) { this.blinkInterval = blinkInterval; }
 }
-
