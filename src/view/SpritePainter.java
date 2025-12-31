@@ -34,7 +34,7 @@ public class SpritePainter {
             floorImage = resourceManager.loadImage("images/floor.png");
             brickImage = resourceManager.loadImage("images/brick.png");
             stoneImage = resourceManager.loadImage("images/stone.png");
-            waterImage = resourceManager.loadImage("images/water.png");
+            waterImage = resourceManager.loadImage("images/river.png");
             grassImage = resourceManager.loadImage("images/grass.png");
             brokenBrickImage = resourceManager.loadImage("images/floor.png");
         } catch (Exception e) {
