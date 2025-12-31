@@ -14,6 +14,7 @@ import map.EnemySpawn;
 import model.*;
 import model.Tank.TankType;
 import ranking.PlayerRecord;
+import ranking.RankingManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +49,9 @@ public class StageGameScene extends BaseGameScene {
     private int targetScore;               // 当前关卡目标分数
     // ========== 随机数生成器 ==========
     private Random random;                 // 修复：延迟初始化
-
+    // StageGameScene 类的成员变量中新增（在 levelStartTime 附近）
+    private long gameGlobalStartTime; // 全局游戏开始时间戳（整个闯关流程的开始时间）
+    private boolean isRecordWritten;
     // ========== 敌人AI相关 ==========
     private static final long ENEMY_AI_UPDATE_INTERVAL = 1000; // 敌人AI更新间隔（毫秒）
     private long lastEnemyAIUpdateTime = 0; // 上次AI更新时间
@@ -82,6 +85,7 @@ public class StageGameScene extends BaseGameScene {
         playerHealth = GameConfig.PLAYER_HEALTH;
         isGameOver = false;
         isLevelComplete = false;
+        isRecordWritten = false;
         enemyTanks.clear();
         bullets.clear();
     }
@@ -102,7 +106,9 @@ public class StageGameScene extends BaseGameScene {
         playerHealth = GameConfig.PLAYER_HEALTH;
         isGameOver = false;
         isLevelComplete = false;
-
+        isRecordWritten = false;
+        // 新增：初始化全局游戏开始时间（关键！用于计算总游玩时长）
+        gameGlobalStartTime = System.currentTimeMillis();
         // 初始化对象列表
         enemyTanks = new ArrayList<>();
         bullets = new ArrayList<>();
@@ -136,8 +142,10 @@ public class StageGameScene extends BaseGameScene {
     }
 
     // ========== 关卡加载系统 ==========
+
     /**
      * 加载指定关卡
+     *
      * @param level 关卡编号（1-3）
      */
     private void loadLevel(int level) {
@@ -226,7 +234,7 @@ public class StageGameScene extends BaseGameScene {
             player.setRotatingLeft(false);
             player.setRotatingRight(false);
             // 回血奖励
-            int heal = (int)(GameConfig.PLAYER_HEALTH * 0.3);
+            int heal = (int) (GameConfig.PLAYER_HEALTH * 0.3);
             player.setHealth(Math.min(GameConfig.PLAYER_HEALTH, player.getHealth() + heal));
             playerHealth = player.getHealth();
         }
@@ -234,17 +242,18 @@ public class StageGameScene extends BaseGameScene {
         // 给玩家 3秒无敌
         player.activateShield(3.0);
 
-        System.out.println("✅ 玩家初始化于: " + (int)x + "," + (int)y);
+        System.out.println("✅ 玩家初始化于: " + (int) x + "," + (int) y);
     }
 
     // 辅助：强制清理一片区域（兜底用）
     private void forceClearAreaAt(double pixelX, double pixelY) {
-        int c = (int)(pixelX / GameConfig.GRID_SIZE);
-        int r = (int)(pixelY / GameConfig.GRID_SIZE);
-        if (r>=0 && r<GameConfig.MAP_ROWS && c>=0 && c<GameConfig.MAP_COLS) {
+        int c = (int) (pixelX / GameConfig.GRID_SIZE);
+        int r = (int) (pixelY / GameConfig.GRID_SIZE);
+        if (r >= 0 && r < GameConfig.MAP_ROWS && c >= 0 && c < GameConfig.MAP_COLS) {
             map[r][c].setType(model.TileType.EMPTY);
         }
     }
+
     /**
      * 【通用工具】检查某个坐标放置坦克是否安全
      * (这个方法可以直接复用给敌人生成逻辑)
@@ -275,6 +284,7 @@ public class StageGameScene extends BaseGameScene {
         }
         return true; // 四个角都安全
     }
+
     /**
      * 生成敌人坦克
      * 根据关卡配置生成不同数量和类型的敌人
@@ -328,9 +338,12 @@ public class StageGameScene extends BaseGameScene {
         // 2. 生成具体坦克对象
         try {
             switch (type) {
-                case ENEMY_HEAVY: return new HeavyTank(x, y);
-                case ENEMY_FAST: return new FastTank(x, y);
-                default: return new NormalTank(x, y);
+                case ENEMY_HEAVY:
+                    return new HeavyTank(x, y);
+                case ENEMY_FAST:
+                    return new FastTank(x, y);
+                default:
+                    return new NormalTank(x, y);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -430,7 +443,7 @@ public class StageGameScene extends BaseGameScene {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        // 1. 调用父类通用道具逻辑
+     /* // 1. 调用父类通用道具逻辑
         super.updateBaseElements();
 
         // 2. 检测敌人死亡掉落道具
@@ -440,7 +453,7 @@ public class StageGameScene extends BaseGameScene {
                 return true;
             }
             return false;
-        });
+        });*/
     }
 
     /**
@@ -569,6 +582,7 @@ public class StageGameScene extends BaseGameScene {
             checkTankTankCollision(enemy);
         }
     }
+
     /**
      * 简单的坦克与坦克碰撞处理（推挤效果）
      */
@@ -602,13 +616,15 @@ public class StageGameScene extends BaseGameScene {
         double dy = t1.getCenterY() - t2.getCenterY();
 
         // 如果完全重叠（极为罕见），给一个随机方向
-        if (dx == 0 && dy == 0) { dx = 1; }
+        if (dx == 0 && dy == 0) {
+            dx = 1;
+        }
 
         // 计算推力力度 (比如每次推开 2 像素)
         double pushSpeed = 2.0;
 
         // 归一化向量，确定推的方向
-        double distance = Math.sqrt(dx*dx + dy*dy);
+        double distance = Math.sqrt(dx * dx + dy * dy);
         double unitX = dx / distance;
         double unitY = dy / distance;
 
@@ -670,6 +686,7 @@ public class StageGameScene extends BaseGameScene {
         }
         return true; // 所有检查通过，位置合法
     }
+
     /**
      * 更新子弹
      */
@@ -770,6 +787,7 @@ public class StageGameScene extends BaseGameScene {
         // 移除死亡的敌人
         enemyTanks.removeIf(e -> !e.isAlive());
     }
+
     /**
      * 检查两个实体是否碰撞
      */
@@ -801,6 +819,8 @@ public class StageGameScene extends BaseGameScene {
         if (player != null && !player.isAlive()) {
             isGameOver = true;
             System.out.println("💀 游戏结束！玩家被击败");
+            // 新增：触发单人闯关记录写入（false 表示未通关）
+            writeSingleGameRecord(false);
             return;
         }
 
@@ -859,6 +879,8 @@ public class StageGameScene extends BaseGameScene {
             // 这里可以添加通关画面或返回主菜单
             isGameOver = true;
 
+            // 新增：触发单人闯关记录写入（true 表示已通关所有关卡）
+            writeSingleGameRecord(true);
             // 显示通关消息
             showGameCompleteMessage();
         }
@@ -958,9 +980,9 @@ public class StageGameScene extends BaseGameScene {
 
         // 创建心形路径
         gc.beginPath();
-        gc.moveTo(0, -size/2);
-        gc.bezierCurveTo(size/2, -size, size, 0, 0, size);
-        gc.bezierCurveTo(-size, 0, -size/2, -size, 0, -size/2);
+        gc.moveTo(0, -size / 2);
+        gc.bezierCurveTo(size / 2, -size, size, 0, 0, size);
+        gc.bezierCurveTo(-size, 0, -size / 2, -size, 0, -size / 2);
         gc.closePath();
         gc.fill();
 
@@ -976,9 +998,9 @@ public class StageGameScene extends BaseGameScene {
 
         // 创建心形路径
         gc.beginPath();
-        gc.moveTo(0, -size/2);
-        gc.bezierCurveTo(size/2, -size, size, 0, 0, size);
-        gc.bezierCurveTo(-size, 0, -size/2, -size, 0, -size/2);
+        gc.moveTo(0, -size / 2);
+        gc.bezierCurveTo(size / 2, -size, size, 0, 0, size);
+        gc.bezierCurveTo(-size, 0, -size / 2, -size, 0, -size / 2);
         gc.closePath();
         gc.stroke();
 
@@ -1137,6 +1159,7 @@ public class StageGameScene extends BaseGameScene {
 
     /**
      * 【核心优化】寻找一个安全的出生坐标
+     *
      * @param isPlayer true表示为玩家寻找(底部/左上)，false表示为敌人寻找(顶部/随机)
      * @return double[]{x, y} 或者 null (如果找不到)
      */
@@ -1228,8 +1251,49 @@ public class StageGameScene extends BaseGameScene {
         return false;
     }
 
+    // 实现新增抽象方法：返回当前游戏模式（单人闯关）
     @Override
     protected PlayerRecord.GameMode getCurrentGameMode() {
-        return null;
+        return PlayerRecord.GameMode.SINGLE_CHALLENGE;
+    }
+    // StageGameScene 类中新增该方法（可放在 checkGameState 方法附近）
+
+    /**
+     * 单人闯关记录写入方法（复用现有 playerScore 和全局时长）
+     *
+     * @param isPassed 是否通关所有关卡
+     */
+    private void writeSingleGameRecord(boolean isPassed) {
+        // 新增：强制打印日志，确认方法是否被触发
+        System.out.println("===== 进入记录写入方法 =====");
+        // 【核心：已写入则直接返回，杜绝重复执行】
+        if (isRecordWritten) {
+            return;
+        } else {
+            // 1. 计算全局游玩时长（秒）：整个闯关流程的总时长
+            long totalPlayTimeSeconds = (System.currentTimeMillis() - gameGlobalStartTime) / 1000;
+
+            // 2. 直接使用现有 playerScore 作为最终得分（你的代码中已累加敌人得分，无需额外计算）
+            int finalScore = playerScore;
+            // 兜底：若得分小于0（异常情况），给基础分50
+            if (finalScore < 0) {
+                finalScore = 50;
+            }
+
+            // 3. 核心：调用 RankingManager 写入单人闯关记录
+            RankingManager.addRecord(
+                    finalScore,
+                    (int) totalPlayTimeSeconds,
+                    PlayerRecord.GameMode.SINGLE_CHALLENGE
+            );
+
+            // 打印日志，验证记录参数
+            System.out.println("📝 单人闯关记录已写入：" +
+                    "是否通关=" + isPassed +
+                    "，最终得分=" + finalScore +
+                    "，总时长=" + totalPlayTimeSeconds + "秒");
+        }
+        // 【关键遗漏：添加这行，写入后将锁置为true，防止重复写入】
+        isRecordWritten=true;
     }
 }
