@@ -32,7 +32,8 @@ public class InputHandler {
 
     // --- 全局状态 ---
     private boolean escPressed; // ESC键状态
-
+    //游戏结束状态，是否返回
+    private boolean r;
     public InputHandler(BaseGameScene scene) {
         this.scene = scene;
         // 初始化一次性按键监听容器（修复NullPointerException）
@@ -66,6 +67,10 @@ public class InputHandler {
                 new view.SettingsWindow(scene.getPrimaryStage()).show();
             }
         }
+        // R键（返回主界面）
+        else if (code == KeyCode.R) r = true;
+
+        if (code == KeyCode.R) r = false;
 
         // 处理一次性按键监听
         if (onceKeyListeners.containsKey(code)) {
@@ -165,7 +170,7 @@ public class InputHandler {
     public boolean isAPressed() { return a; }
     public boolean isDPressed() { return d; }
     public boolean isJPressed() { return j; }
-
+    public boolean isRPressed() { return r; }
     // 全局
     public boolean isEscPressed() { return escPressed; }
 
