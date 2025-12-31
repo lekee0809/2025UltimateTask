@@ -1,5 +1,6 @@
 package view;
 
+import game.AppLauncher;
 import item.Item;
 import item.ItemSpawner;
 import item.ItemType;
@@ -27,6 +28,21 @@ import model.Tank;
 import controller.InputHandler;
 import infra.GameLoop;
 import infra.GameConfig; // 新增导入
+import javafx.scene.control.Slider;
+import javafx.scene.control.CheckBox;
+import javafx.scene.layout.HBox;
+import javafx.beans.value.ChangeListener;
+import javafx.scene.control.Label;
+// ========== 【新增】UI 和输入相关引用 ==========
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+import javafx.scene.control.CheckBox;
+import javafx.scene.layout.VBox;
+import javafx.geometry.Pos;
+import javafx.scene.input.KeyCode;
+// ===========================================
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +77,11 @@ public abstract class BaseGameScene {
     protected SpritePainter spritePainter;
     protected InputHandler inputHandler;
 
+
+    protected VBox pauseMenu;          // 暂停菜单容器
+    protected boolean isPaused = false; // 暂停状态标记
+
+
     // 提示文本相关
     private Text tipText;
     private Animation currentTipAnimation;
@@ -71,6 +92,8 @@ public abstract class BaseGameScene {
     private long pauseStartTime;
     // 构造方法（初始化流程优化）
     public BaseGameScene(Stage primaryStage) {
+        GameConfig.setGamePaused(false);
+
         this.primaryStage = primaryStage;
         this.spritePainter = new SpritePainter();
         this.itemSpawner = new ItemSpawner();
@@ -86,6 +109,9 @@ public abstract class BaseGameScene {
         initModeSpecificLogic();
         // 5. 创建并绑定场景
         createScene();
+        // ========== 【新增】初始化暂停菜单 ==========
+        createPauseMenu();
+        // ============
         // 6. 启动游戏主循环
         startGameLoop(); // <--- 新增这行
 
@@ -192,20 +218,21 @@ public abstract class BaseGameScene {
         gameLoop = new GameLoop() {
             @Override
             public void onUpdate() {
-                // 每秒执行 60 次的物理逻辑
-                updateGameLogic();
+                // ========== 【修改】暂停时不更新逻辑 ==========
+                if (!isPaused) {
+                    updateGameLogic();
+                }
+                // ==========================================
             }
 
             @Override
             public void onRender() {
-                // 跟随屏幕刷新率的绘图逻辑
-                clearAllLayers(); // 先清空
-                renderGameFrame(); // 再重绘
+                clearAllLayers();
+                renderGameFrame();
             }
         };
         gameLoop.start();
     }
-
     // 留给子类 (StageGameScene/TwoPlayerGameScene) 去具体实现
     protected abstract void updateGameLogic(); // 这里写坦克移动、碰撞检测
     protected abstract void renderGameFrame(); // 这里调用 drawMap, drawTank 等
@@ -216,10 +243,88 @@ public abstract class BaseGameScene {
 
     private void createScene() {
         scene = new Scene(gameRoot, WIDTH, HEIGHT);
-        scene.setOnKeyPressed(inputHandler::handleKeyPressed);
-        scene.setOnKeyReleased(inputHandler::handleKeyReleased);
+
+        scene.setOnKeyPressed(e -> {
+            // ========== 【新增】优先拦截 ESC 键 ==========
+            if (e.getCode() == KeyCode.ESCAPE) {
+                togglePause();
+                return; // 拦截，不传给 InputHandler
+            }
+
+            // 如果暂停了或者游戏结束，禁止操作坦克
+            if (isPaused || GameConfig.isGameOver()) {
+                return;
+            }
+            // ==========================================
+
+            inputHandler.handleKeyPressed(e);
+        });
+
+        scene.setOnKeyReleased(e -> {
+            if (isPaused || GameConfig.isGameOver()) return;
+            inputHandler.handleKeyReleased(e);
+        });
     }
 
+    // ========== 【新增/替换】暂停控制逻辑 ==========
+
+    /**
+     * 切换暂停/继续状态
+     */
+    protected void togglePause() {
+        if (GameConfig.isGameOver()) return; // 游戏结束不能暂停
+
+        if (isPaused) {
+            resumeGameProcess();
+        } else {
+            pauseGameProcess();
+        }
+    }
+
+    /**
+     * 暂停：停止逻辑、显示菜单、暂停音乐
+     */
+    public void pauseGameProcess() {
+        isPaused = true;
+        GameConfig.setGamePaused(true);
+
+        // 显示菜单 (添加到界面最上层)
+        if (!gameRoot.getChildren().contains(pauseMenu)) {
+            gameRoot.getChildren().add(pauseMenu);
+        }
+
+        // 暂停音乐
+        SoundManager.getInstance().pauseBGM();
+        SoundManager.getInstance().pauseGameMusic();
+
+        showTipText("GAME PAUSED", 0);
+    }
+
+    /**
+     * 恢复：恢复逻辑、移除菜单、恢复音乐
+     */
+    protected void resumeGameProcess() {
+        isPaused = false;
+        if (gameLoop != null && !GameConfig.isGameOver()) {
+            gameLoop.start();
+            GameConfig.setGamePaused(false);
+        }
+
+        // 移除菜单
+        if (gameRoot.getChildren().contains(pauseMenu)) {
+            gameRoot.getChildren().remove(pauseMenu);
+        }
+
+        // 【修复1】强制隐藏提示文字
+        if (tipText != null) {
+            tipText.setOpacity(0);
+            tipText.setText("");
+        }
+        stopCurrentTipAnimation();
+
+        SoundManager.getInstance().playBGM();
+        SoundManager.getInstance().resumeGameMusic();
+    }
     protected void resetScene() {
         stopCurrentTipAnimation();
         // 重置时调用分层清屏
@@ -447,28 +552,118 @@ public abstract class BaseGameScene {
     }
 
     // 补充：修复 pause/resume 中 GameConfig 状态同步
-    public void pauseGameProcess() {
-        if (gameLoop != null) {
-            gameLoop.stop();
-            GameConfig.setGamePaused(true); // 同步全局暂停状态
-        }
-        // 显示暂停提示
-        showTipText("游戏已暂停", 0); // 0表示永久显示，直到恢复
-        SoundManager.getInstance().pauseBGM();
-        SoundManager.getInstance().pauseGameMusic(); // 兼容双人模式音频
+    /**
+     * 【升级版】创建带设置功能的暂停菜单
+     */
+    private void createPauseMenu() {
+        pauseMenu = new VBox(25); // 增加组件间距
+        pauseMenu.setAlignment(Pos.CENTER);
+        // 背景色加深一点，更清晰
+        pauseMenu.setStyle("-fx-background-color: rgba(0, 0, 0, 0.85); -fx-padding: 40;");
+
+        // 1. 标题
+        Label title = new Label("PAUSE & SETTINGS");
+        title.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 40));
+        title.setTextFill(Color.WHITE);
+
+        // ==================== 音量调节 ====================
+        Label volLabel = new Label("音量 Volume");
+        volLabel.setTextFill(Color.LIGHTGRAY);
+        volLabel.setFont(Font.font(16));
+
+        // 音量滑块 (0.0 到 1.0，默认 0.5)
+        Slider volSlider = new Slider(0, 1, 0.5); // 假设默认音量是 0.5
+        volSlider.setMaxWidth(300);
+        // 【关键】禁止滑块获取焦点，防止按方向键时误触滑块
+        volSlider.setFocusTraversable(false);
+
+        // 监听滑块变化，实时修改音量
+        volSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            double vol = newVal.doubleValue();
+            // 调用 SoundManager 调整 BGM 和 音效
+            SoundManager.getInstance().setGlobalVolume(vol);
+        });
+
+        VBox volBox = new VBox(5, volLabel, volSlider);
+        volBox.setAlignment(Pos.CENTER);
+
+        // ==================== 全屏设置 ====================
+        CheckBox fullScreenBox = new CheckBox("全屏模式 Fullscreen");
+        fullScreenBox.setTextFill(Color.WHITE);
+        fullScreenBox.setFont(Font.font(18));
+        fullScreenBox.setFocusTraversable(false); // 禁止获取焦点
+
+        // 初始化勾选状态
+        fullScreenBox.setSelected(primaryStage.isFullScreen());
+
+        // 勾选事件
+        fullScreenBox.selectedProperty().addListener((obs, oldVal, isSelected) -> {
+            primaryStage.setFullScreen(isSelected);
+        });
+
+        // ==================== 游戏控制按钮 ====================
+        String btnStyle = "-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-size: 18px; -fx-min-width: 200px; -fx-padding: 10 20; -fx-background-radius: 5; -fx-cursor: hand;";
+        String hoverStyle = "-fx-background-color: #e67e22; -fx-text-fill: white; -fx-font-size: 18px; -fx-min-width: 200px; -fx-padding: 10 20; -fx-background-radius: 5; -fx-cursor: hand;";
+
+        // 继续按钮
+        Button btnResume = new Button("▶ 继续游戏 (Resume)");
+        btnResume.setStyle(btnStyle);
+        btnResume.setOnMouseEntered(e -> btnResume.setStyle(hoverStyle));
+        btnResume.setOnMouseExited(e -> btnResume.setStyle(btnStyle));
+        btnResume.setOnAction(e -> togglePause());
+        btnResume.setFocusTraversable(false);
+
+        // 重开按钮
+        Button btnRestart = new Button("🔄 重新开始 (Restart)");
+        btnRestart.setStyle(btnStyle);
+        btnRestart.setOnMouseEntered(e -> btnRestart.setStyle(hoverStyle));
+        btnRestart.setOnMouseExited(e -> btnRestart.setStyle(btnStyle));
+        btnRestart.setOnAction(e -> {
+            togglePause();
+            resetScene();
+            resumeGameProcess();
+        });
+        btnRestart.setFocusTraversable(false);
+
+        // 退出按钮
+        Button btnExit = new Button("🏠 返回主页 (Exit)");
+        btnExit.setStyle(btnStyle);
+        btnExit.setOnMouseEntered(e -> btnExit.setStyle(hoverStyle));
+        btnExit.setOnMouseExited(e -> btnExit.setStyle(btnStyle));
+        btnExit.setOnAction(e -> {
+            // 【修复3】离开场景前，彻底停止当前游戏循环
+            if (gameLoop != null) {
+                gameLoop.stop();
+            }
+            // 重置暂停状态，防止污染下一次游戏
+            GameConfig.setGamePaused(false);
+            isPaused = false;
+
+            SoundManager.getInstance().stopGameMusic();
+            SoundManager.getInstance().playBackgroundMusic();
+
+            AppLauncher mainMenu = new AppLauncher();
+            try {
+                mainMenu.start(primaryStage);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
+        btnExit.setFocusTraversable(false);
+
+        // 添加所有组件到容器
+        pauseMenu.getChildren().addAll(
+                title,
+                new Label(""), // 占位空行
+                volBox,
+                fullScreenBox,
+                new Label(""), // 占位空行
+                btnResume,
+                btnRestart,
+                btnExit
+        );
     }
 
-
-    protected void resumeGameProcess() {
-        if (gameLoop != null && !GameConfig.isGameOver()) { // 游戏未结束才恢复
-            gameLoop.start();
-            GameConfig.setGamePaused(false); // 同步全局暂停状态
-        }
-        // 隐藏暂停提示
-        stopCurrentTipAnimation();
-        SoundManager.getInstance().playBGM();
-        SoundManager.getInstance().resumeGameMusic(); // 兼容双人模式音频
-    }
 
 
 }

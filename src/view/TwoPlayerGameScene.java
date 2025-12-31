@@ -94,8 +94,7 @@ public class TwoPlayerGameScene extends BaseGameScene {
         super(primaryStage); // 此时mapTileView已通过构造代码块初始化，非null
         initScene();
         // 新增：首次进入双人模式时，播放背景音乐
-        settingsWindow = new SettingsWindow(primaryStage);
-        SoundManager.getInstance().playGameMusic();
+        settingsWindow = new SettingsWindow(primaryStage, this);        SoundManager.getInstance().playGameMusic();
         // 新增：初始化道具系统
         itemSpawner = new ItemSpawner();
         particleEffects = new ArrayList<>();
