@@ -7,6 +7,7 @@ import javafx.scene.paint.Color;
 import infra.GameConfig;
 
 import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import map.MapModel;
 import map.GameLevelConfig;
@@ -107,8 +108,11 @@ public class StageGameScene extends BaseGameScene {
         isGameOver = false;
         isLevelComplete = false;
         isRecordWritten = false;
-        // 新增：初始化全局游戏开始时间（关键！用于计算总游玩时长）
-        gameGlobalStartTime = System.currentTimeMillis();
+        // 【核心重置点】：只有重新开始战役时，才同步当前系统时间
+        long now = System.currentTimeMillis();
+        gameGlobalStartTime = now;
+        gameElapsedTime = 0; // 界面立即显示 0
+        System.out.println("🚀 战役重启：时间已归零，从第一关开始...");
         // 初始化对象列表
         enemyTanks = new ArrayList<>();
         bullets = new ArrayList<>();
@@ -418,26 +422,28 @@ public class StageGameScene extends BaseGameScene {
      */
     @Override
     protected void updateGameLogic() {
-        // 1. 计算时间
-        gameElapsedTime = (System.currentTimeMillis() - levelStartTime) / 1000;
-
-        // 2. 检查游戏状态（结束就不更新了）
+        // 【修改核心】：将所有逻辑（包括时间计算）全部锁在状态判断之后
         if (isGameOver || isLevelComplete) {
-            return;
+            return; // 一旦死了或通关，直接退出方法，不执行任何代码
         }
 
+        // 只有没死的时候，才会执行到这里
         try {
-            // 1. 先调用父类更新道具逻辑
+           // 2. 【核心修改】：计算从第一关开始到现在的累计总时间
+                    // 使用 gameGlobalStartTime 而不是 levelStartTime
+                    gameElapsedTime = (System.currentTimeMillis() - gameGlobalStartTime) / 1000;
+
+            // 2. 调用父类更新道具逻辑
             super.updateBaseElements();
 
-            // 直接调用你原本写的逻辑方法
+            // 3. 执行游戏物理逻辑
             updatePlayerTank();
             updateEnemyTanks();
             updateBullets();
             checkCollisions();
             cleanupObjects();
 
-            // 检查过关
+            // 4. 检查游戏状态（如果在这里判定玩家死亡，下一次进入方法就会被顶部的 if 拦截）
             checkGameState();
 
         } catch (Exception e) {
@@ -820,6 +826,18 @@ public class StageGameScene extends BaseGameScene {
             isGameOver = true;
             System.out.println("💀 游戏结束！玩家被击败");
             // 新增：触发单人闯关记录写入（false 表示未通关）
+            // --- 新增：死亡后的按键监听 ---
+            inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.R, () -> {
+                currentLevel = 1;
+                this.resetScene();
+            });
+
+            inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.ESCAPE, () -> {
+                gameLoop.stop();
+                try {
+                    new game.AppLauncher().start(primaryStage);
+                } catch (Exception e) { e.printStackTrace(); }
+            });
             writeSingleGameRecord(false);
             return;
         }
@@ -870,19 +888,37 @@ public class StageGameScene extends BaseGameScene {
             System.out.println("=====================\n");
 
             loadLevel(currentLevel);
+            isLevelComplete = false; // 允许 updateGameLogic 继续运行
         } else {
-            // 通关游戏
+            // --- 修改重点：通关游戏后的交互逻辑 ---
             System.out.println("🎊🎊🎊 恭喜通关所有关卡！ 🎊🎊🎊");
-            System.out.println("最终得分: " + playerScore);
-            System.out.println("总用时: " + gameElapsedTime + " 秒");
+            isLevelComplete = true; // 确保触发渲染
+            isGameOver = true;     // 借用 gameOver 状态停止逻辑更新
 
-            // 这里可以添加通关画面或返回主菜单
-            isGameOver = true;
+            // 1. 停止背景音乐
+            view.SoundManager.getInstance().stopBackgroundMusic();
 
-            // 新增：触发单人闯关记录写入（true 表示已通关所有关卡）
+            // 2. 绑定 R 键：从第一关重新开始整个战役
+            inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.R, () -> {
+                System.out.println("🔄 重新开始完整挑战...");
+                currentLevel = 1;
+                this.resetScene(); // 调用父类重置方法
+            });
+
+            // 3. 绑定 ESC 键：返回 AppLauncher 主界面
+            inputHandler.bindKeyPressOnce(javafx.scene.input.KeyCode.ESCAPE, () -> {
+                System.out.println("🏠 返回主基地...");
+                gameLoop.stop();
+                try {
+                    game.AppLauncher mainMenu = new game.AppLauncher();
+                    mainMenu.start(primaryStage);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+
+            // 触发记录写入
             writeSingleGameRecord(true);
-            // 显示通关消息
-            showGameCompleteMessage();
         }
     }
 
@@ -1011,59 +1047,71 @@ public class StageGameScene extends BaseGameScene {
      * 绘制游戏状态信息
      */
     private void drawGameStateMessages(GraphicsContext gc) {
-        if (gc == null) return;
+        if (gc == null || (!isGameOver && !isLevelComplete)) return;
 
-        try {
-            gc.setFont(HUD_FONT_LARGE);
+        double centerX = WIDTH / 2;
+        double centerY = HEIGHT / 2;
 
-            if (isGameOver) {
-                // 游戏结束画面
-                gc.setFill(GAME_OVER_COLOR);
-                String gameOverText = "游戏结束";
-                double textWidth = getTextWidth(gc, gameOverText);
-                gc.fillText(gameOverText, (WIDTH - textWidth) / 2, HEIGHT / 2 - 30);
+        gc.save();
+        // 1. 绘制半透明黑色遮罩
+        gc.setEffect(null);
+        gc.setFill(Color.rgb(0, 0, 0, 0.7));
+        gc.fillRect(0, 0, WIDTH, HEIGHT);
 
-                gc.setFont(HUD_FONT_MEDIUM);
-                gc.setFill(HUD_TEXT_COLOR);
-                String scoreText = "最终得分: " + playerScore;
-                double scoreWidth = getTextWidth(gc, scoreText);
-                gc.fillText(scoreText, (WIDTH - scoreWidth) / 2, HEIGHT / 2 + 20);
+        if (isGameOver && playerHealth <= 0) {
+            // --- 失败界面美化 ---
+            drawModernTitle(gc, "MISSION FAILED", Color.RED, centerX, centerY - 100);
+        } else if (isLevelComplete && currentLevel == 3) {
+            // --- 全通关界面美化 ---
+            drawModernTitle(gc, "CAMPAIGN COMPLETE", Color.GOLD, centerX, centerY - 100);
 
-                String timeText = "用时: " + gameElapsedTime + " 秒";
-                double timeWidth = getTextWidth(gc, timeText);
-                gc.fillText(timeText, (WIDTH - timeWidth) / 2, HEIGHT / 2 + 50);
-
-                String restartText = "按 R 重新开始，按 ESC 返回主菜单";
-                double restartWidth = getTextWidth(gc, restartText);
-                gc.fillText(restartText, (WIDTH - restartWidth) / 2, HEIGHT / 2 + 90);
-
-            } else if (isLevelComplete) {
-                // 关卡完成画面
-                gc.setFill(LEVEL_COMPLETE_COLOR);
-                String completeText = "第 " + currentLevel + " 关完成！";
-                double textWidth = getTextWidth(gc, completeText);
-                gc.fillText(completeText, (WIDTH - textWidth) / 2, HEIGHT / 2 - 30);
-
-                gc.setFont(HUD_FONT_MEDIUM);
-                gc.setFill(HUD_TEXT_COLOR);
-
-                String scoreText = "得分: " + playerScore + " / " + targetScore;
-                double scoreWidth = getTextWidth(gc, scoreText);
-                gc.fillText(scoreText, (WIDTH - scoreWidth) / 2, HEIGHT / 2 + 20);
-
-                if (currentLevel < 3) {
-                    String nextLevelText = "即将进入第 " + (currentLevel + 1) + " 关...";
-                    double nextWidth = getTextWidth(gc, nextLevelText);
-                    gc.fillText(nextLevelText, (WIDTH - nextWidth) / 2, HEIGHT / 2 + 60);
-                } else {
-                    String congratsText = "恭喜通关所有关卡！";
-                    double congratsWidth = getTextWidth(gc, congratsText);
-                    gc.fillText(congratsText, (WIDTH - congratsWidth) / 2, HEIGHT / 2 + 60);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("❌ 绘制游戏状态信息异常: " + e.getMessage());
+            // 绘制装饰边框
+            gc.setStroke(Color.GOLD);
+            gc.setLineWidth(2);
+            gc.strokeRect(centerX - 300, centerY - 160, 600, 320);
         }
+
+        // 2. 绘制通用数据统计
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 24));
+        gc.setFill(Color.WHITE);
+        // 在 drawGameStateMessages 中显示时间的部分
+        long totalFinalTime;
+        if (isLevelComplete && currentLevel == 3) {
+            // 如果通关了，计算从第一关开始到现在的总时长
+            totalFinalTime = (System.currentTimeMillis() - gameGlobalStartTime) / 1000;
+        } else {
+            // 如果是某一关死了，显示当前关卡坚持的时间
+            totalFinalTime = gameElapsedTime;
+        }
+        gc.fillText("最终得分: " + playerScore, centerX - 80, centerY + 20);
+        gc.fillText("总用时: " + gameElapsedTime + " 秒", centerX - 80, centerY + 60);
+
+        // 3. 绘制底部按键提示 (美化版)
+        drawKeyHint(gc, "R", "RESTART", centerX - 220, HEIGHT - 100, Color.LIME);
+        drawKeyHint(gc, "ESC", "MAIN MENU", centerX + 40, HEIGHT - 100, Color.WHITE);
+
+        gc.restore();
+    }
+
+    // 辅助方法：绘制现代感大标题
+    private void drawModernTitle(GraphicsContext gc, String text, Color color, double x, double y) {
+        gc.setFont(Font.font("Impact", 80));
+        gc.setEffect(new javafx.scene.effect.DropShadow(20, color));
+        gc.setFill(color);
+        gc.fillText(text, x - 300, y);
+        gc.setEffect(null);
+    }
+
+    // 辅助方法：绘制按键标签
+    private void drawKeyHint(GraphicsContext gc, String key, String action, double x, double y, Color color) {
+        gc.setFill(color);
+        gc.fillRoundRect(x, y - 30, 60, 40, 5, 5);
+        gc.setFill(Color.BLACK);
+        gc.setFont(Font.font("Consolas", FontWeight.BOLD, 20));
+        gc.fillText(key, x + 15, y - 2);
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 20));
+        gc.fillText(action, x + 75, y - 2);
     }
 
     /**
