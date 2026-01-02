@@ -656,62 +656,114 @@ public class TwoPlayerGameScene extends BaseGameScene {
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
     }
 
+
+    // 替换原有drawPlayerHUD方法
     private void drawPlayerHUD(GraphicsContext gc) {
-        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 18));
+        // 玩家1面板（左侧）
+        drawPlayerPanel(gc, 20, 20, "P1", player1Lives, Color.web("#3498db"));
 
-        // 绘制 P1 背景框 (绿色系)
-        gc.setFill(Color.web("#27AE60", 0.8));
-        gc.fillRoundRect(20, 20, 160, 40, 10, 10);
-        gc.setStroke(Color.WHITE);
+        // 玩家2面板（右侧）
+        drawPlayerPanel(gc, WIDTH - 220, 20, "P2", player2Lives, Color.web("#e74c3c"));
+
+        // 游戏时间显示（顶部中央）
+        gc.setFill(Color.rgb(0, 0, 0, 0.7));
+        gc.fillRoundRect(WIDTH/2 - 100, 20, 200, 40, 10, 10);
+        gc.setStroke(Color.web("#f39c12"));
         gc.setLineWidth(2);
-        gc.strokeRoundRect(20, 20, 160, 40, 10, 10);
+        gc.strokeRoundRect(WIDTH/2 - 100, 20, 200, 40, 10, 10);
 
-        // 绘制 P1 文字
+        gc.setFont(Font.font("Consolas", FontWeight.BOLD, 18));
         gc.setFill(Color.WHITE);
-        gc.fillText("P1 剩余生命: " + player1Lives, 35, 47);
-
-        // 绘制 P2 背景框 (红色系)
-        double p2X = GameConfig.SCREEN_WIDTH - 180;
-        gc.setFill(Color.web("#C0392B", 0.8));
-        gc.fillRoundRect(p2X, 20, 160, 40, 10, 10);
-        gc.setStroke(Color.WHITE);
-        gc.strokeRoundRect(p2X, 20, 160, 40, 10, 10);
-
-        // 绘制 P2 文字
-        gc.setFill(Color.WHITE);
-        gc.fillText("P2 剩余生命: " + player2Lives, p2X + 15, 47);
+        long playTime = (System.currentTimeMillis() - gameStartTime) / 1000;
+        String timeText = String.format("战斗时间: %02d:%02d", playTime/60, playTime%60);
+        double timeWidth = getTextWidth(gc, timeText);
+        gc.fillText(timeText, WIDTH/2 - timeWidth/2, 47);
     }
 
+    // 绘制玩家信息面板
+    private void drawPlayerPanel(GraphicsContext gc, double x, double y, String player, int lives, Color color) {
+        // 面板背景
+        gc.setFill(Color.rgb(0, 0, 0, 0.7));
+        gc.fillRoundRect(x, y, 200, 80, 10, 10);
+
+        // 边框
+        gc.setStroke(color);
+        gc.setLineWidth(2);
+        gc.strokeRoundRect(x, y, 200, 80, 10, 10);
+
+        // 玩家标识
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 20));
+        gc.setFill(color);
+        gc.fillText(player, x + 20, y + 35);
+
+        // 生命值
+        gc.setFill(Color.WHITE);
+        gc.fillText("生命: ", x + 20, y + 65);
+
+        // 绘制生命图标
+        double iconX = x + 80;
+        for (int i = 0; i < 3; i++) {
+            if (i < lives) {
+                drawHeart(gc, iconX + i * 25, y + 55, 12);
+            } else {
+                gc.setStroke(Color.GRAY);
+                drawHeartOutline(gc, iconX + i * 25, y + 55, 12);
+            }
+        }
+        gc.setFill(color); // 恢复颜色
+    }
+
+    // 替换原有drawGameOverUI方法
     private void drawGameOverUI(GraphicsContext gc) {
-        // 1. 全屏渐变压暗背景
-        LinearGradient grad = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
-                new Stop(0, Color.rgb(0,0,0,0.85)),
-                new Stop(1, Color.rgb(20,20,40,0.95)));
+        // 渐变背景遮罩
+        LinearGradient grad = new LinearGradient(0, 0, 0, 1, true,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, Color.rgb(0,0,0,0.9)),
+                new javafx.scene.paint.Stop(1, Color.rgb(30,30,60,0.95)));
         gc.setFill(grad);
         gc.fillRect(0, 0, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
 
-        // 2. 准备字体
-        gc.setFont(Font.font("Microsoft YaHei", FontWeight.EXTRA_BOLD, 50));
+        // 胜利标题
+        gc.setFont(Font.font("Impact", FontWeight.EXTRA_BOLD, 60));
         double tw = getTextWidth(gc, winner);
         double tx = (GameConfig.SCREEN_WIDTH - tw) / 2;
-        double ty = GameConfig.SCREEN_HEIGHT / 2;
+        double ty = GameConfig.SCREEN_HEIGHT / 2 - 50;
 
-        // 3. 绘制文字阴影
+        // 文字阴影
         gc.setFill(Color.BLACK);
-        gc.fillText(winner, tx + 4, ty + 4);
+        gc.fillText(winner, tx + 5, ty + 5);
 
-        // 4. 绘制金色渐变文字
-        LinearGradient textGrad = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
-                new Stop(0, Color.GOLD),
-                new Stop(1, Color.ORANGE));
+        // 渐变文字
+        LinearGradient textGrad = new LinearGradient(0, 0, 0, 1, true,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, Color.web("#f39c12")),
+                new javafx.scene.paint.Stop(1, Color.web("#e67e22")));
         gc.setFill(textGrad);
         gc.fillText(winner, tx, ty);
 
-        // 5. 绘制装饰线
-        gc.setStroke(Color.GOLD);
+        // 装饰线
+        gc.setStroke(Color.web("#f39c12"));
         gc.setLineWidth(3);
-        gc.strokeLine(tx, ty + 15, tx + tw, ty + 15);
+        gc.strokeLine(tx - 20, ty + 20, tx + tw + 20, ty + 20);
+
+        // 战斗统计
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 24));
+        gc.setFill(Color.WHITE);
+
+        long playTime = (System.currentTimeMillis() - gameStartTime) / 1000;
+        String stats = String.format("战斗时长: %02d:%02d | 剩余生命: P1=%d, P2=%d",
+                playTime/60, playTime%60, player1Lives, player2Lives);
+
+        double statsWidth = getTextWidth(gc, stats);
+        gc.fillText(stats, (GameConfig.SCREEN_WIDTH - statsWidth)/2, GameConfig.SCREEN_HEIGHT/2 + 20);
+
+        // 按键提示
+        gc.setFont(Font.font("Consolas", FontWeight.BOLD, 20));
+        gc.fillText("按 ENTER 继续 | 按 ESC 返回菜单",
+                (GameConfig.SCREEN_WIDTH - getTextWidth(gc, "按 ENTER 继续 | 按 ESC 返回菜单"))/2,
+                GameConfig.SCREEN_HEIGHT/2 + 80);
     }
+
 
     private void updateBullets() {
         List<Bullet> removeList = new ArrayList<>();
@@ -973,4 +1025,53 @@ public class TwoPlayerGameScene extends BaseGameScene {
     public void setGameStartTime(long gameStartTime) {
         this.gameStartTime = gameStartTime;
     }
+
+
+    /**
+     * 绘制实心爱心（用于显示剩余生命）
+     * @param gc 图形上下文
+     * @param x 左上角 X
+     * @param y 左上角 Y
+     * @param size 爱心的大小（宽度/高度）
+     */
+    private void drawHeart(GraphicsContext gc, double x, double y, double size) {
+        gc.beginPath();
+        // 移动到爱心上方中间的凹陷处
+        gc.moveTo(x + size / 2, y + size / 3.5);
+
+        // 左半边曲线
+        gc.bezierCurveTo(x + size / 2, y, x, y, x, y + size / 2);
+        gc.bezierCurveTo(x, y + size * 0.75, x + size / 2, y + size, x + size / 2, y + size);
+
+        // 右半边曲线
+        gc.bezierCurveTo(x + size / 2, y + size, x + size, y + size * 0.75, x + size, y + size / 2);
+        gc.bezierCurveTo(x + size, y, x + size / 2, y, x + size / 2, y + size / 3.5);
+
+        gc.fill(); // 填充颜色（颜色由调用前的 gc.setFill 设置）
+    }
+
+    /**
+     * 绘制空心爱心轮廓（用于显示已损失的生命）
+     * @param gc 图形上下文
+     * @param x 左上角 X
+     * @param y 左上角 Y
+     * @param size 爱心的大小
+     */
+    private void drawHeartOutline(GraphicsContext gc, double x, double y, double size) {
+        gc.beginPath();
+        // 移动到爱心上方中间的凹陷处
+        gc.moveTo(x + size / 2, y + size / 3.5);
+
+        // 左半边曲线
+        gc.bezierCurveTo(x + size / 2, y, x, y, x, y + size / 2);
+        gc.bezierCurveTo(x, y + size * 0.75, x + size / 2, y + size, x + size / 2, y + size);
+
+        // 右半边曲线
+        gc.bezierCurveTo(x + size / 2, y + size, x + size, y + size * 0.75, x + size, y + size / 2);
+        gc.bezierCurveTo(x + size, y, x + size / 2, y, x + size / 2, y + size / 3.5);
+
+        gc.stroke(); // 描边（颜色由调用前的 gc.setStroke 设置）
+    }
+
+
 }

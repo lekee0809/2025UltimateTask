@@ -7,6 +7,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import infra.GameConfig;
 
+import javafx.scene.paint.LinearGradient;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
@@ -433,9 +434,9 @@ public class StageGameScene extends BaseGameScene {
 
         // 只有没死的时候，才会执行到这里
         try {
-           // 2. 【核心修改】：计算从第一关开始到现在的累计总时间
-                    // 使用 gameGlobalStartTime 而不是 levelStartTime
-                    gameElapsedTime = (System.currentTimeMillis() - gameGlobalStartTime) / 1000;
+            // 2. 【核心修改】：计算从第一关开始到现在的累计总时间
+            // 使用 gameGlobalStartTime 而不是 levelStartTime
+            gameElapsedTime = (System.currentTimeMillis() - gameGlobalStartTime) / 1000;
 
             // 2. 调用父类更新道具逻辑
             super.updateBaseElements();
@@ -512,6 +513,12 @@ public class StageGameScene extends BaseGameScene {
             super.renderBaseElements();
             // 5. 绘制道具和粒子特效 (调用父类方法)
             super.renderBaseElements();
+
+            if (player != null) {
+                playerHealth = player.getHealth();
+            }
+
+
 
             // 6. 绘制 HUD (建议画在 bulletGc 上，或者你再加一个 uiCanvas)
             // 这里暂时画在最顶层的 bulletGc 上，确保文字在最上面
@@ -952,38 +959,7 @@ public class StageGameScene extends BaseGameScene {
     /**
      * 绘制HUD（抬头显示）
      */
-    private void drawHUD(GraphicsContext gc) {
-        if (gc == null) return;
 
-        try {
-            // 设置字体
-            gc.setFont(HUD_FONT_MEDIUM);
-
-            // 1. 绘制关卡信息（左上角）
-            gc.setFill(LEVEL_COLOR);
-            gc.fillText("第 " + currentLevel + " 关", 20, 30);
-
-            // 2. 绘制分数（左上角，关卡下方）
-            gc.setFill(SCORE_COLOR);
-            gc.fillText("分数: " + playerScore + " / " + targetScore, 20, 60);
-
-            // 3. 绘制游戏时间（右上角）
-            gc.setFill(TIME_COLOR);
-            String timeText = String.format("时间: %02d:%02d",
-                    gameElapsedTime / 60, gameElapsedTime % 60);
-            gc.fillText(timeText, WIDTH - 150, 30);
-
-            // 4. 绘制玩家血量（右上角，时间下方）
-            drawPlayerHealth(gc);
-
-            // 5. 绘制敌人数量（右上角）
-            gc.setFill(HUD_TEXT_COLOR);
-            gc.fillText("剩余敌人: " + enemyTanks.size(), WIDTH - 150, 90);
-
-        } catch (Exception e) {
-            System.err.println("❌ 绘制HUD异常: " + e.getMessage());
-        }
-    }
 
     /**
      * 绘制玩家血量（用红心表示）
@@ -1060,6 +1036,118 @@ public class StageGameScene extends BaseGameScene {
     /**
      * 绘制游戏状态信息
      */
+
+
+    // 替换原有drawHUD方法
+    private void drawHUD(GraphicsContext gc) {
+        if (gc == null) return;
+
+        try {
+            // 绘制半透明背景板
+            gc.setFill(Color.rgb(0, 0, 0, 0.7));
+            gc.fillRoundRect(10, 10, 220, 100, 10, 10);
+            gc.fillRoundRect(WIDTH - 230, 10, 220, 100, 10, 10);
+
+            // 绘制边框
+            gc.setStroke(Color.web("#f39c12"));
+            gc.setLineWidth(2);
+            gc.strokeRoundRect(10, 10, 220, 100, 10, 10);
+            gc.strokeRoundRect(WIDTH - 230, 10, 220, 100, 10, 10);
+
+            // 左侧：关卡和分数
+            gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 20));
+
+            gc.setFill(Color.web("#2ecc71"));
+            gc.fillText("第 " + currentLevel + " 关", 30, 40);
+
+            gc.setFill(Color.web("#f1c40f"));
+            gc.fillText("分数: " + playerScore, 30, 70);
+            gc.fillText("目标: " + targetScore, 30, 100);
+
+            // 右侧：时间和敌人数量
+            gc.setFill(Color.web("#3498db"));
+            String timeText = String.format("时间: %02d:%02d",
+                    gameElapsedTime / 60, gameElapsedTime % 60);
+            gc.fillText(timeText, WIDTH - 210, 40);
+
+            // 血量显示（心形图标）
+            drawHealthHearts(gc, WIDTH - 210, 70, playerHealth);
+
+            gc.setFill(Color.WHITE);
+            gc.fillText("剩余敌人: " + enemyTanks.size(), WIDTH - 210, 100);
+
+        } catch (Exception e) {
+            System.err.println("❌ 绘制HUD异常: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 【修复版】绘制心形血量（支持任意血量数值）
+     * 原理：计算血量百分比，映射到3颗心上
+     */
+    /**
+     * 【完美修复版】绘制心形血量
+     * 修复问题：解决血量减少后，红色爱心没有消失（残影）的问题
+     */
+    /**
+     * 【最终版】绘制心形血量
+     * 特性：
+     * 1. 自动根据血量百分比显示 0-3 颗心
+     * 2. 扣血后爱心变暗（无残留）
+     * 3. 不显示具体的数字文本
+     */
+    private void drawHealthHearts(GraphicsContext gc, double x, double y, int health) {
+        gc.setFill(Color.web("#e74c3c"));
+        gc.fillText("血量: ", x, y);
+
+        // 1. 获取最大血量和UI显示的爱心总数
+        int maxHealth = GameConfig.PLAYER_HEALTH;
+        int totalHearts = 5;
+
+        // 2. 计算需要亮几颗心 (向上取整)
+        int filledHearts = 0;
+        if (health > 0) {
+            filledHearts = (int) Math.ceil((double) health / maxHealth * totalHearts);
+            // 兜底：只要没死，至少显示半颗心/一颗心，避免误导玩家
+            if (filledHearts == 0) filledHearts = 1;
+        }
+
+        double heartX = x + 60;
+
+        // 3. 循环绘制 3 颗心
+        for (int i = 0; i < totalHearts; i++) {
+            double hx = heartX + i * 30;
+            double hy = y - 10;
+            double hSize = 15;
+
+            if (i < filledHearts) {
+                // =========== 存活状态：画红心 ===========
+                gc.setFill(Color.web("#e74c3c")); // 亮红色
+                drawHeart(gc, hx, hy, hSize);
+            } else {
+                // =========== 扣血状态：画空心槽 ===========
+
+                // 1. 先用深灰色涂黑（擦除原来的红色）
+                gc.setFill(Color.rgb(40, 40, 40));
+                drawHeart(gc, hx, hy, hSize);
+
+                // 2. 再画灰色的边框
+                gc.setStroke(Color.GRAY);
+                gc.setLineWidth(1);
+                drawHeartOutline(gc, hx, hy, hSize);
+
+                // 恢复画笔颜色，防止影响后续绘制
+                gc.setFill(Color.web("#e74c3c"));
+            }
+        }
+
+        // 此处已删除 text 绘制代码
+    }
+
+
+
+
+    // 美化游戏状态提示
     private void drawGameStateMessages(GraphicsContext gc) {
         if (gc == null || (!isGameOver && !isLevelComplete)) return;
 
@@ -1067,42 +1155,45 @@ public class StageGameScene extends BaseGameScene {
         double centerY = HEIGHT / 2;
 
         gc.save();
-        // 1. 绘制半透明黑色遮罩
-        gc.setEffect(null);
-        gc.setFill(Color.rgb(0, 0, 0, 0.7));
+
+        // 半透明黑色遮罩 + 渐变
+        LinearGradient maskGrad = new LinearGradient(0, 0, 0, 1, true,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, Color.rgb(0,0,0,0.8)),
+                new javafx.scene.paint.Stop(1, Color.rgb(20,20,40,0.9)));
+        gc.setFill(maskGrad);
         gc.fillRect(0, 0, WIDTH, HEIGHT);
 
-        if (isGameOver && playerHealth <= 0) {
-            // --- 失败界面美化 ---
-            drawModernTitle(gc, "MISSION FAILED", Color.RED, centerX, centerY - 100);
-        } else if (isLevelComplete && currentLevel == 3) {
-            // --- 全通关界面美化 ---
-            drawModernTitle(gc, "CAMPAIGN COMPLETE", Color.GOLD, centerX, centerY - 100);
+        // 标题文字
+        String title = isGameOver && playerHealth <= 0 ? "MISSION FAILED" : "LEVEL COMPLETE";
+        Color titleColor = isGameOver ? Color.web("#e74c3c") : Color.web("#f39c12");
 
-            // 绘制装饰边框
-            gc.setStroke(Color.GOLD);
-            gc.setLineWidth(2);
-            gc.strokeRect(centerX - 300, centerY - 160, 600, 320);
-        }
+        gc.setFont(Font.font("Impact", FontWeight.BOLD, 80));
+        gc.setEffect(new javafx.scene.effect.DropShadow(20, titleColor));
+        gc.setFill(titleColor);
 
-        // 2. 绘制通用数据统计
+        double titleWidth = getTextWidth(gc, title);
+        gc.fillText(title, centerX - titleWidth/2, centerY - 80);
+        gc.setEffect(null);
+
+        // 数据面板
+        gc.setFill(Color.rgb(0, 0, 0, 0.8));
+        gc.fillRoundRect(centerX - 250, centerY - 40, 500, 180, 10, 10);
+        gc.setStroke(Color.web("#f39c12"));
+        gc.setLineWidth(2);
+        gc.strokeRoundRect(centerX - 250, centerY - 40, 500, 180, 10, 10);
+
+        // 数据文字
         gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 24));
         gc.setFill(Color.WHITE);
-        // 在 drawGameStateMessages 中显示时间的部分
-        long totalFinalTime;
-        if (isLevelComplete && currentLevel == 3) {
-            // 如果通关了，计算从第一关开始到现在的总时长
-            totalFinalTime = (System.currentTimeMillis() - gameGlobalStartTime) / 1000;
-        } else {
-            // 如果是某一关死了，显示当前关卡坚持的时间
-            totalFinalTime = gameElapsedTime;
-        }
-        gc.fillText("最终得分: " + playerScore, centerX - 80, centerY + 20);
-        gc.fillText("总用时: " + gameElapsedTime + " 秒", centerX - 80, centerY + 60);
 
-        // 3. 绘制底部按键提示 (美化版)
-        drawKeyHint(gc, "R", "RESTART", centerX - 220, HEIGHT - 100, Color.LIME);
-        drawKeyHint(gc, "ESC", "MAIN MENU", centerX + 40, HEIGHT - 100, Color.WHITE);
+        gc.fillText("最终得分: " + playerScore, centerX - 220, centerY + 10);
+        gc.fillText("总用时: " + gameElapsedTime + " 秒", centerX - 220, centerY + 50);
+        gc.fillText("剩余生命: " + (playerHealth > 0 ? playerHealth : 0), centerX - 220, centerY + 90);
+
+        // 按键提示
+        drawKeyHint(gc, "R", "重新开始", centerX - 180, HEIGHT - 80, Color.web("#2ecc71"));
+        drawKeyHint(gc, "ESC", "返回菜单", centerX + 60, HEIGHT - 80, Color.WHITE);
 
         gc.restore();
     }

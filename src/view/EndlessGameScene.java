@@ -691,31 +691,46 @@ public class EndlessGameScene extends BaseGameScene {
         }
     }
 
+
+
+    // 替换原有drawHUD方法
     private void drawHUD(GraphicsContext gc) {
         gc.save();
-        gc.setFont(HUD_FONT);
 
-        // 左上：波次进度
-        gc.setFill(Color.GOLD);
-        gc.fillText("WAVE " + currentWave, 20, 30);
+        // 左侧面板：波次和击杀数
+        gc.setFill(Color.rgb(0, 0, 0, 0.75));
+        gc.fillRoundRect(15, 15, 200, 90, 10, 10);
+        gc.setStroke(Color.web("#e67e22"));
+        gc.setLineWidth(2);
+        gc.strokeRoundRect(15, 15, 200, 90, 10, 10);
 
-        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 20));
+        gc.setFill(Color.web("#f39c12"));
+        gc.fillText("WAVE " + currentWave, 35, 45);
+
         gc.setFont(Font.font("Consolas", 18));
+        gc.setFill(Color.WHITE);
         String progress = String.format("Kills: %d / %d", enemiesKilledInWave, targetKills);
-        gc.fillText(progress, 20, 60);
+        gc.fillText(progress, 35, 75);
 
-        // 右上：血量和分数
+        // 右侧面板：血量和分数
+        gc.setFill(Color.rgb(0, 0, 0, 0.75));
+        gc.fillRoundRect(WIDTH - 215, 15, 200, 90, 10, 10);
+        gc.setStroke(Color.web("#e67e22"));
+        gc.strokeRoundRect(WIDTH - 215, 15, 200, 90, 10, 10);
+
         if (player != null) {
-            gc.setFill(player.getHealthPercentage() > 0.3 ? Color.LIME : Color.RED);
-            gc.fillText("HP: " + player.getHealth() + " / " + player.getMaxHealth(), WIDTH - 250, 30);
+            gc.setFill(player.getHealthPercentage() > 0.3 ? Color.web("#2ecc71") : Color.web("#e74c3c"));
+            gc.fillText("HP: " + player.getHealth() + " / " + player.getMaxHealth(), WIDTH - 195, 45);
         }
 
-        gc.setFill(Color.CYAN);
-        gc.fillText("Score: " + score, WIDTH - 250, 60);
+        gc.setFill(Color.web("#f1c40f"));
+        gc.fillText("Score: " + score, WIDTH - 195, 75);
 
         gc.restore();
     }
 
+    // 优化drawGameOver方法（保留原有逻辑，增强视觉效果）
     private void drawGameOver(GraphicsContext gc) {
         double screenW = GameConfig.SCREEN_WIDTH;
         double screenH = GameConfig.SCREEN_HEIGHT;
@@ -724,72 +739,119 @@ public class EndlessGameScene extends BaseGameScene {
 
         gc.save();
 
-        // 1. 深度沉浸背景：深红色渐变叠加网格线
-        gc.setFill(new RadialGradient(0, 0, centerX, centerY, screenW * 0.8, false, CycleMethod.NO_CYCLE,
-                new Stop(0, Color.rgb(60, 0, 0, 0.85)),
-                new Stop(1, Color.BLACK)));
+        // 增强版背景：深红色径向渐变 + 战术网格
+        gc.setFill(new RadialGradient(0, 0, centerX, centerY, screenW * 0.8, false,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, Color.rgb(80, 0, 0, 0.9)),
+                new javafx.scene.paint.Stop(1, Color.BLACK)));
         gc.fillRect(0, 0, screenW, screenH);
 
-        // 绘制微弱的战术网格
-        gc.setStroke(Color.rgb(255, 255, 255, 0.05));
+        // 更密集的战术网格
+        gc.setStroke(Color.rgb(255, 255, 255, 0.08));
         gc.setLineWidth(1);
-        for(int i=0; i<screenW; i+=40) gc.strokeLine(i, 0, i, screenH);
-        for(int i=0; i<screenH; i+=40) gc.strokeLine(0, i, screenW, i);
+        for(int i=0; i<screenW; i+=30) gc.strokeLine(i, 0, i, screenH);
+        for(int i=0; i<screenH; i+=30) gc.strokeLine(0, i, screenW, i);
 
-        // 2. 核心大标题：MISSION FAILED (带激光描边感)
-        gc.setFont(Font.font("Impact", 100));
+        // 标题增强：双层阴影 + 金属质感
+        gc.setFont(Font.font("Impact", 110));
 
-        // 第一层：底层红色强光
-        gc.setEffect(new DropShadow(30, Color.RED));
-        gc.setFill(Color.web("#7f0000"));
-        gc.fillText("MISSION FAILED", centerX - 290, centerY - 120);
+        // 第一层：深红色外发光
+        gc.setEffect(new javafx.scene.effect.DropShadow(40, Color.RED));
+        gc.setFill(Color.web("#800000"));
+        gc.fillText("MISSION FAILED", centerX - 300, centerY - 120);
 
-        // 第二层：上层亮红字体
-        gc.setEffect(null);
-        gc.setFill(new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
-                new Stop(0, Color.RED), new Stop(1, Color.web("#4d0000"))));
-        gc.fillText("MISSION FAILED", centerX - 293, centerY - 123);
+        // 第二层：亮红色主体 + 斜面效果
+        gc.setEffect(new javafx.scene.effect.Lighting());
+        gc.setFill(new LinearGradient(0, 0, 0, 1, true,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, Color.RED),
+                new javafx.scene.paint.Stop(1, Color.web("#500000"))));
+        gc.fillText("MISSION FAILED", centerX - 303, centerY - 123);
 
-        // 3. 数据结算面板 (金属框架风格)
-        double panelW = 500;
-        double panelH = 180;
+        // 数据面板增强
+        double panelW = 550;
+        double panelH = 200;
         double px = centerX - panelW / 2;
         double py = centerY - 40;
 
-        // 面板底色：半透明深色
-        gc.setFill(Color.rgb(20, 20, 20, 0.9));
-        gc.fillRoundRect(px, py, panelW, panelH, 10, 10);
+        // 面板底色：深色渐变
+        gc.setFill(new LinearGradient(0, 0, 0, 1, true,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, Color.rgb(30, 30, 30, 0.95)),
+                new javafx.scene.paint.Stop(1, Color.rgb(10, 10, 10, 0.95))));
+        gc.fillRoundRect(px, py, panelW, panelH, 15, 15);
 
-        // 面板金属边框：使用亮黄色 (FBC531)
-        gc.setStroke(Color.web("#fbc531"));
-        gc.setLineWidth(3);
-        gc.strokeRoundRect(px, py, panelW, panelH, 10, 10);
+        // 金属边框：金色渐变
+        gc.setStroke(new LinearGradient(0, 0, 1, 0, true,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, Color.web("#fbc531")),
+                new javafx.scene.paint.Stop(1, Color.web("#e1b12c"))));
+        gc.setLineWidth(4);
+        gc.strokeRoundRect(px, py, panelW, panelH, 15, 15);
 
-        // 装饰角标 (增加机械感)
+        // 装饰角标增强
         gc.setFill(Color.web("#fbc531"));
-        gc.fillRect(px, py, 20, 20); // 左上
-        gc.fillRect(px + panelW - 20, py + panelH - 20, 20, 20); // 右下
+        gc.fillPolygon(new double[]{px, px+30, px}, new double[]{py, py+30, py+30}, 3); // 左上
+        gc.fillPolygon(new double[]{px+panelW, px+panelW-30, px+panelW},
+                new double[]{py+panelH, py+panelH-30, py+panelH}, 3); // 右下
 
-        // 绘制文字
-        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 30));
+        // 文字增强
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 32));
         gc.setFill(Color.WHITE);
-        gc.fillText("SURVIVED WAVES:", px + 40, py + 70);
-        gc.fillText("TOTAL SCORE:", px + 40, py + 130);
+        gc.fillText("SURVIVED WAVES:", px + 50, py + 75);
+        gc.fillText("TOTAL SCORE:", px + 50, py + 135);
 
-        // 动态数值展示
+        // 数值使用霓虹效果
         gc.setFill(Color.web("#fbc531"));
-        gc.setFont(Font.font("Consolas", FontWeight.BOLD, 35));
-        gc.fillText(String.valueOf(currentWave), px + 330, py + 70);
-        gc.fillText(String.valueOf(score), px + 330, py + 130);
+        gc.setFont(Font.font("Consolas", FontWeight.BOLD, 40));
+        gc.setEffect(new javafx.scene.effect.Glow(0.8));
+        gc.fillText(String.valueOf(currentWave), px + 350, py + 75);
+        gc.fillText(String.valueOf(score), px + 350, py + 135);
+        gc.setEffect(null);
 
-        // 4. 底部操作提示栏
-        // 提示条背景
-        gc.setFill(Color.rgb(255, 255, 255, 0.1));
-        gc.fillRect(0, screenH - 100, screenW, 100);
+        // 底部操作栏增强
+        gc.setFill(Color.rgb(255, 255, 255, 0.15));
+        gc.fillRoundRect(0, screenH - 120, screenW, 120, 0, 0);
 
-        // 绘制带有闪烁感的按键图标
-        drawModernHint(gc, "R", "REDEPLOY (重新部署)", centerX - 250, screenH - 45, Color.LIME);
-        drawModernHint(gc, "ESC", "ABORT (撤离)", centerX + 80, screenH - 45, Color.WHITE);
+        // 按键提示增强
+        drawModernHint(gc, "R", "REDEPLOY (重新部署)", centerX - 280, screenH - 50, Color.web("#2ecc71"));
+        drawModernHint(gc, "ESC", "ABORT (撤离)", centerX + 50, screenH - 50, Color.web("#3498db"));
+
+        gc.restore();
+    }
+
+    // 优化按键提示绘制
+    private void drawModernHint(GraphicsContext gc, String key, String text, double x, double y, Color themeColor) {
+        gc.save();
+
+        // 按键背景渐变
+        LinearGradient keyGrad = new LinearGradient(0, 0, 1, 1, true,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, themeColor),
+                new javafx.scene.paint.Stop(1, themeColor.darker()));
+        gc.setFill(keyGrad);
+        gc.fillRoundRect(x, y - 35, 70, 45, 8, 8);
+
+        // 按键边框
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(1);
+        gc.strokeRoundRect(x, y - 35, 70, 45, 8, 8);
+
+        // 按键文字
+        gc.setFill(Color.BLACK);
+        gc.setFont(Font.font("Consolas", FontWeight.BLACK, 26));
+        gc.fillText(key, x + (key.length() == 1 ? 25 : 12), y - 5);
+
+        // 说明文字
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 22));
+        gc.fillText(text, x + 85, y - 5);
+
+        // 呼吸效果
+        gc.setEffect(new javafx.scene.effect.DropShadow(15, themeColor));
+        gc.setStroke(themeColor);
+        gc.setLineWidth(2);
+        gc.strokeRoundRect(x, y - 35, 70, 45, 8, 8);
 
         gc.restore();
     }
@@ -797,31 +859,7 @@ public class EndlessGameScene extends BaseGameScene {
     /**
      * 现代感按键提示绘制
      */
-    private void drawModernHint(GraphicsContext gc, String key, String text, double x, double y, Color themeColor) {
-        gc.save();
 
-        // 按键背景
-        gc.setFill(themeColor);
-        gc.fillRoundRect(x, y - 30, 60, 40, 5, 5);
-
-        // 按键字母
-        gc.setFill(Color.BLACK);
-        gc.setFont(Font.font("Consolas", FontWeight.BLACK, 24));
-        gc.fillText(key, x + (key.length() == 1 ? 22 : 10), y - 2);
-
-        // 动作说明
-        gc.setFill(Color.WHITE);
-        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 22));
-        gc.fillText(text, x + 75, y - 2);
-
-        // 添加一个小呼吸动画效果的影子
-        gc.setEffect(new DropShadow(10, themeColor));
-        gc.setStroke(themeColor);
-        gc.setLineWidth(1);
-        gc.strokeRoundRect(x, y - 30, 60, 40, 5, 5);
-
-        gc.restore();
-    }
 
     // EndlessGameScene 中添加 resetScene 重写
     @Override

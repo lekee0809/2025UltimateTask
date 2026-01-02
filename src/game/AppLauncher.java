@@ -3,12 +3,13 @@ package game;
 import infra.GameConfig;
 import javafx.animation.*;
 import javafx.application.Application;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.effect.*;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
-import javafx.scene.paint.*;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -69,8 +70,24 @@ public class AppLauncher extends Application {
 
         btnExit.setOnAction(e -> System.exit(0));
 
-        // 组装 UI (别忘了把 btnSettings 加进去)
-        menuRoot.getChildren().addAll(title, btnStageMode, btnEndlessMode, btnPvPMode, btnRanking, btnSettings, btnExit);
+        // 组装按钮容器
+        VBox buttonContainer = new VBox(15);
+        buttonContainer.setAlignment(Pos.CENTER);
+        buttonContainer.getChildren().addAll(title, btnStageMode, btnEndlessMode, btnPvPMode, btnRanking, btnSettings, btnExit);
+
+        // ========== 操作说明侧边栏（缩小版） ==========
+        VBox controlPanel = createControlInstructionPanel();
+
+        // 创建主容器，按钮区域居左，操作面板靠右
+        HBox mainContent = new HBox();
+        mainContent.setAlignment(Pos.CENTER);
+        mainContent.setPadding(new Insets(20));
+        // 设置间距，让操作面板靠右侧显示
+        HBox.setHgrow(buttonContainer, Priority.ALWAYS);
+        mainContent.getChildren().addAll(buttonContainer, controlPanel);
+
+        menuRoot.getChildren().add(mainContent);
+        // =========================================
 
         rootContainer.getChildren().addAll(menuRoot, scanLine);
 
@@ -79,9 +96,88 @@ public class AppLauncher extends Application {
         primaryStage.setScene(menuScene);
         primaryStage.show();
 
-        // 播放背景音乐
-        SoundManager.getInstance().playBackgroundMusic();
+        // 播放背景音乐 - 如果 SoundManager 不存在，注释掉下面这行
+        // SoundManager.getInstance().playBackgroundMusic();
     }
+
+    // ========== 新增方法：创建缩小版操作说明面板 ==========
+    private VBox createControlInstructionPanel() {
+        // 主面板 - 缩小尺寸
+        VBox panel = new VBox(8);
+        panel.setAlignment(Pos.TOP_CENTER);
+        panel.setPrefSize(180, 320); // 大幅缩小尺寸
+        panel.setPadding(new Insets(15));
+        panel.setStyle(
+                "-fx-background-color: rgba(0, 0, 0, 0.5); " +
+                        "-fx-border-color: #fbc531; " +
+                        "-fx-border-width: 1; " +
+                        "-fx-border-radius: 3; " +
+                        "-fx-background-radius: 3;"
+        );
+
+        // 标题 - 缩小字体
+        Text panelTitle = new Text("操作说明");
+        panelTitle.setFont(Font.font("Impact", FontWeight.BOLD, 16));
+        panelTitle.setFill(Color.web("#fbc531"));
+        panelTitle.setWrappingWidth(150);
+        panelTitle.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+
+        // 分割线 - 缩短
+        Rectangle divider = new Rectangle(140, 1, Color.web("#fbc531", 0.6));
+
+        // Player 1 说明 - 缩小字体
+        VBox player1Box = createPlayerInstructionBox("玩家 1", "WASD", "J");
+
+        // Player 2 说明 - 缩小字体
+        VBox player2Box = createPlayerInstructionBox("玩家 2", "↑↓←→", "Enter");
+
+        // 通用说明 - 缩小字体
+        VBox commonBox = createPlayerInstructionBox("通用", "—", "ESC");
+
+        // 组装面板
+        panel.getChildren().addAll(
+                panelTitle,
+                divider,
+                player1Box,
+                createSmallDivider(),
+                player2Box,
+                createSmallDivider(),
+                commonBox
+        );
+
+        return panel;
+    }
+
+    // 创建缩小版玩家操作说明子面板
+    private VBox createPlayerInstructionBox(String playerLabel, String moveKeys, String fireKey) {
+        VBox box = new VBox(3);
+        box.setAlignment(Pos.CENTER_LEFT);
+
+        // 玩家标签 - 更小字体
+        Text playerText = new Text(playerLabel);
+        playerText.setFont(Font.font("Consolas", FontWeight.BOLD, 12));
+        playerText.setFill(Color.WHITE);
+
+        // 移动按键 - 更小字体，简化显示
+        Text moveText = new Text("移动: " + moveKeys);
+        moveText.setFont(Font.font("Consolas", 11));
+        moveText.setFill(Color.web("#2ecc71"));
+
+        // 发射按键 - 更小字体，简化显示
+        Text fireText = new Text("发射: " + fireKey);
+        fireText.setFont(Font.font("Consolas", 11));
+        fireText.setFill(Color.web("#e74c3c"));
+
+        box.getChildren().addAll(playerText, moveText, fireText);
+        return box;
+    }
+
+    // 创建小型分割线 - 缩短
+    private Rectangle createSmallDivider() {
+        Rectangle divider = new Rectangle(140, 1, Color.web("#fbc531", 0.3));
+        return divider;
+    }
+    // =========================================
 
     // 场景切换淡入淡出
     private void switchScene(Stage stage, Scene newScene) {
