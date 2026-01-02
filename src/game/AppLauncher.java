@@ -128,11 +128,11 @@ public class AppLauncher extends Application {
         // Player 1 说明 - 缩小字体
         VBox player1Box = createPlayerInstructionBox("玩家 1", "WASD", "J");
 
-        // Player 2 说明 - 缩小字体
-        VBox player2Box = createPlayerInstructionBox("玩家 2", "↑↓←→", "Enter");
+        // Player 2 说明 - 缩小字体，发射键改为K
+        VBox player2Box = createPlayerInstructionBox("玩家 2", "↑↓←→", "K");
 
-        // 通用说明 - 缩小字体
-        VBox commonBox = createPlayerInstructionBox("通用", "—", "ESC");
+        // 通用说明 - 删除移动和发射相关内容
+        VBox commonBox = createCommonInstructionBox();
 
         // 组装面板
         panel.getChildren().addAll(
@@ -169,6 +169,25 @@ public class AppLauncher extends Application {
         fireText.setFill(Color.web("#e74c3c"));
 
         box.getChildren().addAll(playerText, moveText, fireText);
+        return box;
+    }
+
+    // 创建通用说明面板（删除移动和发射）
+    private VBox createCommonInstructionBox() {
+        VBox box = new VBox(3);
+        box.setAlignment(Pos.CENTER_LEFT);
+
+        // 通用标签
+        Text commonText = new Text("通用");
+        commonText.setFont(Font.font("Consolas", FontWeight.BOLD, 12));
+        commonText.setFill(Color.WHITE);
+
+        // 仅保留ESC说明，删除移动和发射相关
+        Text escText = new Text("ESC (暂停/设置)");
+        escText.setFont(Font.font("Consolas", 11));
+        escText.setFill(Color.web("#fbc531"));
+
+        box.getChildren().addAll(commonText, escText);
         return box;
     }
 
