@@ -864,6 +864,9 @@ public class StageGameScene extends BaseGameScene {
     /**
      * 检查关卡完成条件
      */
+    /**
+     * 检查关卡完成条件
+     */
     private void checkLevelCompletion() {
         // 条件1：消灭所有敌人
         boolean allEnemiesDefeated = enemyTanks.isEmpty();
@@ -875,29 +878,32 @@ public class StageGameScene extends BaseGameScene {
         if (allEnemiesDefeated && scoreReached) {
             isLevelComplete = true;
             System.out.println("🎉 第 " + currentLevel + " 关完成！");
-            System.out.println("   得分: " + playerScore + " / " + targetScore);
-            System.out.println("   用时: " + gameElapsedTime + " 秒");
-// 优先同步写入记录（无论是否最终关，先写入）
-            writeSingleGameRecord(true);
 
+            // ⚠️【删掉这行】不要在这里写记录！会导致后续关卡无法写入
+            // writeSingleGameRecord(true);
+
+            // 如果是最后一关 (第3关)
             if (currentLevel >= 3) {
+                // 【移到这里】只有通关全服才写入胜利记录 + 计算时间分
+                writeSingleGameRecord(true);
+
                 isGameOver = true;
                 this.pauseGameProcess();
                 Platform.runLater(this::showGameOverDialog);
                 return;
             }
+
             // 延迟2秒后进入下一关
             new Thread(() -> {
                 try {
                     Thread.sleep(2000);
-                    javafx.application.Platform.runLater(this::nextLevel);
+                    Platform.runLater(this::nextLevel);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }).start();
         }
     }
-
     /**
      * 进入下一关
      */
@@ -1416,49 +1422,63 @@ public class StageGameScene extends BaseGameScene {
      *
      * @param isPassed 是否通关所有关卡
      */
+    /**
+     * 单人闯关记录写入方法 (含时间积分逻辑)
+     */
     private void writeSingleGameRecord(boolean isPassed) {
-        // 新增：强制打印日志，确认方法是否被触发
         System.out.println("===== 进入记录写入方法 =====");
-        // 【核心：已写入则直接返回，杜绝重复执行】
+
+        // 防止重复写入
         if (isRecordWritten) {
-            System.out.println("ℹ️  记录已写入，跳过重复执行");
             return;
         } else {
             try {
-                // 1. 计算全局游玩时长（秒）：兜底避免负数，确保参数合法
+                // 1. 计算全局游玩时长
                 long totalPlayTimeMillis = System.currentTimeMillis() - gameGlobalStartTime;
                 int totalPlayTimeSeconds = (int) (totalPlayTimeMillis / 1000);
-                totalPlayTimeSeconds = Math.max(0, totalPlayTimeSeconds); // 避免负数
+                totalPlayTimeSeconds = Math.max(0, totalPlayTimeSeconds);
 
-                // 2. 最终得分兜底：确保非负，适配 RankingManager 的存储要求
-                int finalScore = Math.max(playerScore, 100);
+                // 2. 计算时间奖励
+                int timeBonus = 0;
 
-                // 3. 明确指定游戏模式：必须是 PlayerRecord.GameMode.SINGLE_CHALLENGE（对应单人闯关文件）
-                PlayerRecord.GameMode gameMode = PlayerRecord.GameMode.SINGLE_CHALLENGE;
+                // 只有通关才加时间分
+                if (isPassed) {
+                    int maxTimeBonus = 3000;
+                    int decayPerSecond = 10;
 
-                // 【关键：严格按 RankingManager 要求的参数类型调用，无多余参数】
-                RankingManager.addRecord(finalScore, totalPlayTimeSeconds, gameMode);
+                    // 公式：3000 - (10 * 秒数)
+                    timeBonus = maxTimeBonus - (totalPlayTimeSeconds * decayPerSecond);
 
-                // 打印详细日志，确认参数无误（便于排查）
-                System.out.println("📝 调用 RankingManager 写入记录成功：" +
-                        "是否通关=" + isPassed +
-                        "，最终得分=" + finalScore +
-                        "，总时长=" + totalPlayTimeSeconds + "秒" +
-                        "，游戏模式=" + gameMode.getModeName() +
-                        "，对应文件=" + (gameMode == PlayerRecord.GameMode.SINGLE_CHALLENGE ? "single_challenge_ranking.txt" :
-                        (gameMode == PlayerRecord.GameMode.DOUBLE_BATTLE ? "double_battle_ranking.txt" : "endless_mode_ranking.txt")));
+                    // 兜底：奖励不小于0
+                    timeBonus = Math.max(0, timeBonus);
+
+                    System.out.println("⏱️ 时间奖励结算: 耗时 " + totalPlayTimeSeconds + "s, 奖励 +" + timeBonus);
+                }
+
+                // 【核心修复】：直接把奖励加到全局分数变量里！
+                // 这样 drawGameStateMessages 画图时，就能读到加分后的值了
+                this.playerScore += timeBonus;
+
+                // 确保不为负数
+                if (this.playerScore < 0) this.playerScore = 0;
+
+                // 3. 写入排行榜 (使用更新后的 playerScore)
+                RankingManager.addRecord(this.playerScore, totalPlayTimeSeconds, PlayerRecord.GameMode.SINGLE_CHALLENGE);
+
+                System.out.println("📝 写入记录成功: 通关=" + isPassed + ", 最终显示分=" + this.playerScore);
+
             } catch (Exception e) {
-                // 捕获所有异常，避免隐性失败（之前可能吞掉了异常，导致看似执行成功）
-                System.err.println("❌ 调用 RankingManager 写入记录异常：" + e.getMessage());
-                e.printStackTrace(); // 打印堆栈，定位具体错误
+                e.printStackTrace();
             } finally {
-                // 【关键：无论是否成功，都标记为已写入，避免重复尝试】
                 isRecordWritten = true;
-                // ========== 新增：游戏结束时停止背景音乐 ==========
                 SoundManager.getInstance().stopBackgroundMusic();
             }
         }
     }
+    /**
+     * 计算最终得分（原始击杀分 + 时间奖励）
+     * 逻辑：满分3000，每过1秒扣10分，扣完为止。
+     */
     // 在 StageGameScene 类中添加该方法
     private void showGameOverDialog() {
 
