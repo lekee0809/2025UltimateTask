@@ -164,4 +164,12 @@ public class PlayerRecord implements Comparable<PlayerRecord> {
     public void setItemCount(int itemCount) {
         this.itemCount = Math.max(0, itemCount);
     }
+
+    public void setFinishTimeStamp(long finishTimeStamp) {
+        this.finishTimeStamp = finishTimeStamp;
+    }
+
+    public void setFinishTimeStr(String finishTimeStr) {
+        this.finishTimeStr = finishTimeStr;
+    }
 }
