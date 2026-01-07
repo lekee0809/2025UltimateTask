@@ -3,6 +3,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 /**
@@ -195,5 +196,28 @@ public class ParticleEffect {
 
     public void setFinished(boolean finished) {
         this.finished = finished;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof ParticleEffect that)) return false;
+        return Double.compare(x, that.x) == 0 && Double.compare(y, that.y) == 0 && Float.compare(duration, that.duration) == 0 && Float.compare(elapsedTime, that.elapsedTime) == 0 && finished == that.finished && Objects.equals(particles, that.particles);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y, particles, duration, elapsedTime, finished);
+    }
+
+    @Override
+    public String toString() {
+        return "ParticleEffect{" +
+                "x=" + x +
+                ", y=" + y +
+                ", particles=" + particles +
+                ", duration=" + duration +
+                ", elapsedTime=" + elapsedTime +
+                ", finished=" + finished +
+                '}';
     }
 }
