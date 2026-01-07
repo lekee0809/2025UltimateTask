@@ -9,3 +9,4 @@ public enum ItemAnimationState {
     EXPIRING,     // 消失动画中
     COLLECTED     // 已被拾取
 }
+
