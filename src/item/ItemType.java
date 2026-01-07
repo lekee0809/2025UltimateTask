@@ -57,4 +57,14 @@ public enum ItemType {
         }
         return HEAL; // 默认返回回血道具
     }
+
+    @Override
+    public String toString() {
+        return "ItemType{" +
+                "code=" + code +
+                ", name='" + name + '\'' +
+                ", imagePath='" + imagePath + '\'' +
+                ", duration=" + duration +
+                '}';
+    }
 }
