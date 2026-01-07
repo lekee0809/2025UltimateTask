@@ -1,6 +1,8 @@
 package item;
 
 import infra.GameConfig;
+
+import java.util.Objects;
 import java.util.Random;
 import model.Tank;
 import model.PlayerTank;
@@ -295,4 +297,34 @@ public class Item {
     public void setLastBlinkTime(long lastBlinkTime) { this.lastBlinkTime = lastBlinkTime; }
     public long getBlinkInterval() { return blinkInterval; }
     public void setBlinkInterval(long blinkInterval) { this.blinkInterval = blinkInterval; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Item item)) return false;
+        return Double.compare(x, item.x) == 0 && Double.compare(y, item.y) == 0 && Double.compare(width, item.width) == 0 && Double.compare(height, item.height) == 0 && active == item.active && spawnTime == item.spawnTime && Float.compare(alpha, item.alpha) == 0 && Float.compare(scale, item.scale) == 0 && visible == item.visible && lastBlinkTime == item.lastBlinkTime && blinkInterval == item.blinkInterval && type == item.type && animationState == item.animationState;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, x, y, width, height, active, spawnTime, animationState, alpha, scale, visible, lastBlinkTime, blinkInterval);
+    }
+
+    @Override
+    public String toString() {
+        return "Item{" +
+                "type=" + type +
+                ", x=" + x +
+                ", y=" + y +
+                ", width=" + width +
+                ", height=" + height +
+                ", active=" + active +
+                ", spawnTime=" + spawnTime +
+                ", animationState=" + animationState +
+                ", alpha=" + alpha +
+                ", scale=" + scale +
+                ", visible=" + visible +
+                ", lastBlinkTime=" + lastBlinkTime +
+                ", blinkInterval=" + blinkInterval +
+                '}';
+    }
 }
