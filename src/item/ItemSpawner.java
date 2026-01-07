@@ -2,10 +2,7 @@ package item;
 
 import model.*;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 /**
  * 道具生成器
@@ -195,5 +192,25 @@ public class ItemSpawner {
 
     public void setRandom(Random random) {
         this.random = random;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof ItemSpawner that)) return false;
+        return Objects.equals(activeItems, that.activeItems) && Objects.equals(collectedItems, that.collectedItems) && Objects.equals(random, that.random);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(activeItems, collectedItems, random);
+    }
+
+    @Override
+    public String toString() {
+        return "ItemSpawner{" +
+                "activeItems=" + activeItems +
+                ", collectedItems=" + collectedItems +
+                ", random=" + random +
+                '}';
     }
 }
