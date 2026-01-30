@@ -12,6 +12,7 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
+import ranking.ModernRankingDisplay;
 import static infra.GameConfig.SCREEN_HEIGHT;
 import static infra.GameConfig.SCREEN_WIDTH;
 
@@ -101,7 +102,7 @@ public class StartSceneOptimized {
         rankBtn.setOnMouseExited(e -> rankBtn.setStyle(ThemeManager.ButtonStyles.PRIMARY));
 
         rankBtn.setOnAction(e -> {
-            RankingDisplay.showRankingWindow(ranking.PlayerRecord.GameMode.SINGLE_CHALLENGE);
+            ModernRankingDisplay.showRankingWindow(ranking.PlayerRecord.GameMode.SINGLE_CHALLENGE);
         });
 
         // 设置按钮

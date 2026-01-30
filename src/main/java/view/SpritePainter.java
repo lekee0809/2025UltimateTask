@@ -188,8 +188,8 @@ public class SpritePainter {
             gc.setLineWidth(3);
             gc.strokeOval(tank.getX() - 5, tank.getY() - 5, tank.getWidth() + 10, tank.getHeight() + 10);
             
-            // 添加发光效果
-            gc.setShadow(10, 5, 5, Color.GOLD);
+            // 添加发光效果 - JavaFX没有setShadow方法，使用其他效果替代
+            // gc.setShadow(10, 5, 5, Color.GOLD);
         }
 
         // 1. 移动画布原点到坦克的【中心点】
@@ -232,7 +232,7 @@ public class SpritePainter {
 
         // 恢复画布状态
         gc.setGlobalAlpha(1.0);
-        gc.setShadow(0, 0, 0, Color.TRANSPARENT);
+        // gc.setShadow(0, 0, 0, Color.TRANSPARENT); // JavaFX没有setShadow方法
         gc.restore();
     }
     /**

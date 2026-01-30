@@ -654,18 +654,6 @@ public abstract class BaseGameScene {
                 ex.printStackTrace();
             }
         });
-        btnExit.setFocusTraversable(false);
-
-        // 添加所有组件到容器
-                title,
-                new Label(""), // 占位空行
-                volBox,
-                fullScreenBox,
-                new Label(""), // 占位空行
-                btnResume,
-                btnRestart,
-                btnExit
-        );
     }
 
     public void setPrimaryStage(Stage primaryStage) {

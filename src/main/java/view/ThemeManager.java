@@ -27,6 +27,11 @@ public class ThemeManager {
         public static final Color ENEMY_NORMAL = Color.web("#e74c3c");   // 普通敌人
         public static final Color ENEMY_FAST = Color.web("#9b59b6");     // 快速敌人
         public static final Color ENEMY_HEAVY = Color.web("#7f8c8d");    // 重型敌人
+        
+        // HUD颜色
+        public static final Color LEVEL_COLOR = SUCCESS;                 // 等级颜色
+        public static final Color SCORE_COLOR = WARNING;                 // 分数颜色
+        public static final Color TIME_COLOR = PRIMARY;                  // 时间颜色
     }
     
     // 字体主题
