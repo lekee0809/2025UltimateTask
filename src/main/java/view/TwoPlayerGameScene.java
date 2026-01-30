@@ -194,12 +194,13 @@ public class TwoPlayerGameScene extends BaseGameScene {
     }
 
     private void initScene() {
-        StackPane root = new StackPane();
+        // 使用父类的gameRoot，而不是创建新的局部变量
+        gameRoot = new StackPane();
         Canvas tankCanvas = new Canvas(GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         Canvas bulletCanvas = new Canvas(GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         // mapTileView已非null，可安全添加
-        root.getChildren().addAll(mapTileView, tankCanvas, bulletCanvas);
-        scene = new Scene(root, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
+        gameRoot.getChildren().addAll(mapTileView, tankCanvas, bulletCanvas);
+        scene = new Scene(gameRoot, GameConfig.SCREEN_WIDTH, GameConfig.SCREEN_HEIGHT);
         bindTwoPlayerInput();
     }
 
@@ -641,15 +642,9 @@ public class TwoPlayerGameScene extends BaseGameScene {
     }
     @Override
     protected void renderGameFrame() {
-        ObservableList<Node> rootChildren = scene.getRoot().getChildrenUnmodifiable();
-        Canvas tankCanvas = (Canvas) rootChildren.get(1);
-        Canvas bulletCanvas = (Canvas) rootChildren.get(2);
-
+        // 使用父类提供的画布和上下文
         clearCanvas(tankCanvas);
         clearCanvas(bulletCanvas);
-
-        GraphicsContext tankGc = tankCanvas.getGraphicsContext2D();
-        GraphicsContext bulletGc = bulletCanvas.getGraphicsContext2D();
 
         if (player1.isAlive()) player1.draw(tankGc);
         if (player2.isAlive()) player2.draw(tankGc);
