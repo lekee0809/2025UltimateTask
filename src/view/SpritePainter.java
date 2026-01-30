@@ -176,16 +176,20 @@ public class SpritePainter {
 
         // 保存当前的画布状态 (以免旋转影响到后续绘制)
         gc.save();
+        
         // 如果是玩家且处于无敌状态，改变透明度或添加特效
         if (tank instanceof PlayerTank && ((PlayerTank) tank).isInvincible()) {
             // 产生闪烁感：根据时间控制透明度
             double alpha = 0.5 + 0.4 * Math.sin(System.currentTimeMillis() / 100.0);
             gc.setGlobalAlpha(alpha);
 
-            // 可以在坦克脚下画一个金色的圆圈作为护盾感
+            // 在坦克周围画一个发光的护盾效果
             gc.setStroke(Color.GOLD);
             gc.setLineWidth(3);
             gc.strokeOval(tank.getX() - 5, tank.getY() - 5, tank.getWidth() + 10, tank.getHeight() + 10);
+            
+            // 添加发光效果
+            gc.setShadow(10, 5, 5, Color.GOLD);
         }
 
         // 1. 移动画布原点到坦克的【中心点】
@@ -199,23 +203,36 @@ public class SpritePainter {
         gc.rotate(tank.getDisplayRotation());
 
         // 3. 绘制坦克 (此时坐标系中心已经是坦克中心了，所以要画在 -w/2, -h/2 处)
-        // 区分敌我颜色
+        // 根据坦克类型使用不同颜色
         if (tank instanceof model.PlayerTank) {
-            gc.setFill(Color.YELLOW); // 玩家：黄色
+            gc.setFill(ThemeManager.Colors.PLAYER_TANK); // 玩家：蓝色
+        } else if (tank instanceof model.NormalTank) {
+            gc.setFill(ThemeManager.Colors.ENEMY_NORMAL); // 普通敌人：红色
+        } else if (tank instanceof model.FastTank) {
+            gc.setFill(ThemeManager.Colors.ENEMY_FAST); // 快速敌人：紫色
+        } else if (tank instanceof model.HeavyTank) {
+            gc.setFill(ThemeManager.Colors.ENEMY_HEAVY); // 重型敌人：灰色
         } else {
-            gc.setFill(Color.RED);    // 敌人：红色
+            gc.setFill(Color.RED); // 默认敌人：红色
         }
 
-        // 画车身
+        // 画车身（使用渐变色）
         double w = tank.getWidth();
         double h = tank.getHeight();
         gc.fillRect(-w / 2, -h / 2, w, h);
 
-        // 画个炮管指示方向 (在右侧，因为0度默认向右)
+        // 画炮管指示方向 (在右侧，因为0度默认向右)
         gc.setFill(Color.BLACK);
-        gc.fillRect(0, -5, w / 2 + 5, 10);
+        gc.fillRect(w / 2 - 2, -3, w / 2 + 5, 6);
+
+        // 画坦克履带效果
+        gc.setFill(Color.DARKGRAY);
+        gc.fillRect(-w / 2 - 2, -h / 2 - 2, w + 4, 4);  // 上履带
+        gc.fillRect(-w / 2 - 2, h / 2 - 2, w + 4, 4);   // 下履带
 
         // 恢复画布状态
+        gc.setGlobalAlpha(1.0);
+        gc.setShadow(0, 0, 0, Color.TRANSPARENT);
         gc.restore();
     }
     /**
