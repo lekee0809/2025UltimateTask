@@ -561,9 +561,13 @@ public abstract class BaseGameScene {
 
     // 补充：修复 pause/resume 中 GameConfig 状态同步
     /**
+     * 【升级版】创建带设置功能的暂停菜单
      */
     private void createPauseMenu() {
+        pauseMenu = new VBox(25); // 增加组件间距
+        pauseMenu.setAlignment(Pos.CENTER);
         // 背景色加深一点，更清晰
+        pauseMenu.setStyle("-fx-background-color: rgba(0, 0, 0, 0.85); -fx-padding: 40;");
 
         // 1. 标题
         Label title = new Label("PAUSE & SETTINGS");
@@ -656,6 +660,7 @@ public abstract class BaseGameScene {
         btnExit.setFocusTraversable(false);
 
         // 添加所有组件到容器
+        pauseMenu.getChildren().addAll(
                 title,
                 new Label(""), // 占位空行
                 volBox,
@@ -752,11 +757,11 @@ public abstract class BaseGameScene {
     }
 
     public ModernPauseMenu getPauseMenu() {
-        return modernPauseMenu;
+        return pauseMenu;
     }
 
     public void setPauseMenu(ModernPauseMenu pauseMenu) {
-        this.modernPauseMenu = pauseMenu;
+        this.pauseMenu = pauseMenu;
     }
 
     public boolean isPaused() {
