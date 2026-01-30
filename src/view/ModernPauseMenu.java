@@ -214,12 +214,8 @@ public class ModernPauseMenu {
         }
 
         // 【修复1】强制隐藏提示文字
-        if (gameScene != null && gameScene.getTipText() != null) {
-            gameScene.getTipText().setOpacity(0);
-            gameScene.getTipText().setText("");
-        }
         if (gameScene != null) {
-            gameScene.stopCurrentTipAnimation();
+            gameScene.hideTipText();
         }
 
         SoundManager.getInstance().playBGM();

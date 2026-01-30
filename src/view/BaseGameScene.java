@@ -205,7 +205,7 @@ public abstract class BaseGameScene {
         fadeIn.play();
     }
 
-    private void stopCurrentTipAnimation() {
+    protected void stopCurrentTipAnimation() {
         if (currentTipAnimation != null && currentTipAnimation.getStatus() == Animation.Status.RUNNING) {
             currentTipAnimation.stop();
             currentTipAnimation = null;
@@ -810,5 +810,16 @@ public abstract class BaseGameScene {
 
     public void setPauseStartTime(long pauseStartTime) {
         this.pauseStartTime = pauseStartTime;
+    }
+    
+    /**
+     * 隐藏提示文字
+     */
+    public void hideTipText() {
+        if (tipText != null) {
+            tipText.setOpacity(0);
+            tipText.setText("");
+        }
+        stopCurrentTipAnimation();
     }
 }
