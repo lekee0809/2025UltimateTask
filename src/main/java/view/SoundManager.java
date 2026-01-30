@@ -43,11 +43,11 @@ public class SoundManager {
     private void initSoundMap() {
         soundPathMap = new HashMap<>();
         // 音乐
-        soundPathMap.put("background", "sounds/background.wav");
-        soundPathMap.put("game", "sounds/game.wav");
+        soundPathMap.put("background", "/sounds/background.wav");
+        soundPathMap.put("game", "/sounds/game.wav");
         // 音效
-        soundPathMap.put("shoot", "sounds/tank_fire.wav");
-        soundPathMap.put("explosion", "sounds/explosion.wav");
+        soundPathMap.put("shoot", "/sounds/tank_fire.wav");
+        soundPathMap.put("explosion", "/sounds/explosion.wav");
     }
 
     // ==================== 【关键修复】BGM 音量控制 ====================

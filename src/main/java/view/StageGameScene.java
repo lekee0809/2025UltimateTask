@@ -509,9 +509,7 @@ public class StageGameScene extends BaseGameScene {
             if (map != null) {
                 spritePainter.drawMapForeground(tankGc, map);
             }
-// 调用父类绘制道具和粒子
-            super.renderBaseElements();
-            // 5. 绘制道具和粒子特效 (调用父类方法)
+// 5. 绘制道具和粒子特效 (调用父类方法)
             super.renderBaseElements();
 
             if (player != null) {

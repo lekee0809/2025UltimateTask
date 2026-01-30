@@ -532,10 +532,12 @@ public abstract class BaseGameScene {
             }
         }
 
-        particleEffects.removeIf(ParticleEffect::isFinished);
+        // 优化粒子效果更新：批量处理和减少迭代次数
+        // 先更新所有粒子，再一次性移除已完成的粒子
         for (ParticleEffect effect : particleEffects) {
             effect.update(0.016f);
         }
+        particleEffects.removeIf(ParticleEffect::isFinished);
     }
     /**
      * 父类统一渲染方法
