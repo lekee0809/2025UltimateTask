@@ -9,6 +9,7 @@ import model.PlayerTank;
 import ranking.PlayerRecord;
 import ranking.RankingManager;
 import view.SoundManager;
+import view.ModernPauseMenu;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
