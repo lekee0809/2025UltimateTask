@@ -311,6 +311,7 @@ public abstract class BaseGameScene {
      */
     protected void resumeGameProcess() {
         if (modernPauseMenu != null) {
+            // 直接调用ModernPauseMenu的resumeGame方法，避免递归
             modernPauseMenu.resumeGame();
             isPaused = false;
         } else {

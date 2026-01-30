@@ -172,6 +172,11 @@ public class ModernPauseMenu {
         isPaused = true;
         GameConfig.setGamePaused(true);
 
+        // 停止游戏循环
+        if (gameScene != null && gameScene.getGameLoop() != null) {
+            gameScene.getGameLoop().stop();
+        }
+
         // 暂停音乐
         SoundManager.getInstance().pauseBGM();
         SoundManager.getInstance().pauseGameMusic();
@@ -182,6 +187,11 @@ public class ModernPauseMenu {
                 gameScene.getGameRoot().getChildren().add(pauseMenu);
             }
         }
+
+        // 显示暂停提示
+        if (gameScene != null) {
+            gameScene.showTipText("GAME PAUSED", 0);
+        }
     }
 
     /**
@@ -189,16 +199,27 @@ public class ModernPauseMenu {
      */
     public void resumeGame() {
         isPaused = false;
+        
+        // 直接恢复游戏逻辑，而不是调用gameScene.resumeGameProcess()以避免递归
         if (gameScene != null && gameScene.getGameLoop() != null && !GameConfig.isGameOver()) {
             gameScene.getGameLoop().start();
-            GameConfig.setGamePaused(false);
         }
+        GameConfig.setGamePaused(false);
 
         // 移除暂停菜单
         if (gameScene != null && gameScene.getGameRoot() != null) {
             if (gameScene.getGameRoot().getChildren().contains(pauseMenu)) {
                 gameScene.getGameRoot().getChildren().remove(pauseMenu);
             }
+        }
+
+        // 【修复1】强制隐藏提示文字
+        if (gameScene != null && gameScene.getTipText() != null) {
+            gameScene.getTipText().setOpacity(0);
+            gameScene.getTipText().setText("");
+        }
+        if (gameScene != null) {
+            gameScene.stopCurrentTipAnimation();
         }
 
         SoundManager.getInstance().playBGM();
