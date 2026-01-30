@@ -1,43 +1,52 @@
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-.kotlin
+# Compiled class file
+*.class
+*.jar
+*.war
+*.ear
 
-### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
+# Log file
+*.log
+
+# BlueJ generated files
+*.ctxt
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.sar
+*.zip
+*.rar
+*.tar.gz
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+replay_pid*
+
+# Maven
+target/
+dependency-reduced-pom.xml
+
+# IDE
+.idea/
 *.iws
 *.iml
 *.ipr
-
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
 .vscode/
 
-### Mac OS ###
+# OS
 .DS_Store
+Thumbs.db
 
-.idea/
-*.iml
-target/
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# User-specific files
+.settings/
+*.launch
+.metadata
+bin/
+tmp/
+temp/

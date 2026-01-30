@@ -78,8 +78,8 @@ public abstract class BaseGameScene {
     protected InputHandler inputHandler;
 
 
-    protected VBox pauseMenu;          // 暂停菜单容器
-    protected boolean isPaused = false; // 暂停状态标记
+    protected ModernPauseMenu modernPauseMenu;  // 现代化暂停菜单
+    protected boolean isPaused = false;         // 暂停状态标记
 
 
     // 提示文本相关
@@ -109,8 +109,8 @@ public abstract class BaseGameScene {
         initModeSpecificLogic();
         // 5. 创建并绑定场景
         createScene();
-        // ========== 【新增】初始化暂停菜单 ==========
-        createPauseMenu();
+        // ========== 【新增】初始化现代化暂停菜单 ==========
+        modernPauseMenu = new ModernPauseMenu(this, primaryStage);
         // ============
         // 6. 启动游戏主循环
         startGameLoop(); // <--- 新增这行
@@ -205,7 +205,7 @@ public abstract class BaseGameScene {
         fadeIn.play();
     }
 
-    private void stopCurrentTipAnimation() {
+    protected void stopCurrentTipAnimation() {
         if (currentTipAnimation != null && currentTipAnimation.getStatus() == Animation.Status.RUNNING) {
             currentTipAnimation.stop();
             currentTipAnimation = null;
@@ -274,10 +274,15 @@ public abstract class BaseGameScene {
     protected void togglePause() {
         if (GameConfig.isGameOver()) return; // 游戏结束不能暂停
 
-        if (isPaused) {
-            resumeGameProcess();
+        if (modernPauseMenu != null) {
+            modernPauseMenu.togglePause();
+            isPaused = modernPauseMenu.isPaused();
         } else {
-            pauseGameProcess();
+            if (isPaused) {
+                resumeGameProcess();
+            } else {
+                pauseGameProcess();
+            }
         }
     }
 
@@ -285,45 +290,48 @@ public abstract class BaseGameScene {
      * 暂停：停止逻辑、显示菜单、暂停音乐
      */
     public void pauseGameProcess() {
-        isPaused = true;
-        GameConfig.setGamePaused(true);
+        if (modernPauseMenu != null) {
+            modernPauseMenu.pauseGame();
+            isPaused = true;
+        } else {
+            // 保持向后兼容
+            isPaused = true;
+            GameConfig.setGamePaused(true);
 
-        // 显示菜单 (添加到界面最上层)
-        if (!gameRoot.getChildren().contains(pauseMenu)) {
-            gameRoot.getChildren().add(pauseMenu);
+            // 暂停音乐
+            SoundManager.getInstance().pauseBGM();
+            SoundManager.getInstance().pauseGameMusic();
+
+            showTipText("GAME PAUSED", 0);
         }
-
-        // 暂停音乐
-        SoundManager.getInstance().pauseBGM();
-        SoundManager.getInstance().pauseGameMusic();
-
-        showTipText("GAME PAUSED", 0);
     }
 
     /**
      * 恢复：恢复逻辑、移除菜单、恢复音乐
      */
     protected void resumeGameProcess() {
-        isPaused = false;
-        if (gameLoop != null && !GameConfig.isGameOver()) {
-            gameLoop.start();
-            GameConfig.setGamePaused(false);
-        }
+        if (modernPauseMenu != null) {
+            // 直接调用ModernPauseMenu的resumeGame方法，避免递归
+            modernPauseMenu.resumeGame();
+            isPaused = false;
+        } else {
+            // 保持向后兼容
+            isPaused = false;
+            if (gameLoop != null && !GameConfig.isGameOver()) {
+                gameLoop.start();
+                GameConfig.setGamePaused(false);
+            }
 
-        // 移除菜单
-        if (gameRoot.getChildren().contains(pauseMenu)) {
-            gameRoot.getChildren().remove(pauseMenu);
-        }
+            // 【修复1】强制隐藏提示文字
+            if (tipText != null) {
+                tipText.setOpacity(0);
+                tipText.setText("");
+            }
+            stopCurrentTipAnimation();
 
-        // 【修复1】强制隐藏提示文字
-        if (tipText != null) {
-            tipText.setOpacity(0);
-            tipText.setText("");
+            SoundManager.getInstance().playBGM();
+            SoundManager.getInstance().resumeGameMusic();
         }
-        stopCurrentTipAnimation();
-
-        SoundManager.getInstance().playBGM();
-        SoundManager.getInstance().resumeGameMusic();
     }
     protected void resetScene() {
         stopCurrentTipAnimation();
@@ -748,11 +756,11 @@ public abstract class BaseGameScene {
         this.inputHandler = inputHandler;
     }
 
-    public VBox getPauseMenu() {
+    public ModernPauseMenu getPauseMenu() {
         return pauseMenu;
     }
 
-    public void setPauseMenu(VBox pauseMenu) {
+    public void setPauseMenu(ModernPauseMenu pauseMenu) {
         this.pauseMenu = pauseMenu;
     }
 
@@ -802,5 +810,16 @@ public abstract class BaseGameScene {
 
     public void setPauseStartTime(long pauseStartTime) {
         this.pauseStartTime = pauseStartTime;
+    }
+    
+    /**
+     * 隐藏提示文字
+     */
+    public void hideTipText() {
+        if (tipText != null) {
+            tipText.setOpacity(0);
+            tipText.setText("");
+        }
+        stopCurrentTipAnimation();
     }
 }

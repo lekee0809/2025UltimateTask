@@ -60,17 +60,17 @@ public class StageGameScene extends BaseGameScene {
     private long lastEnemyAIUpdateTime = 0; // 上次AI更新时间
 
     // ========== 界面常量 ==========
-    private static final Color HUD_TEXT_COLOR = Color.WHITE;
-    private static final Color HEALTH_COLOR = Color.RED;
-    private static final Color SCORE_COLOR = Color.GOLD;
-    private static final Color TIME_COLOR = Color.CYAN;
-    private static final Color LEVEL_COLOR = Color.LIMEGREEN;
-    private static final Color GAME_OVER_COLOR = Color.RED;
-    private static final Color LEVEL_COMPLETE_COLOR = Color.YELLOW;
+    private static final Color HUD_TEXT_COLOR = ThemeManager.Colors.LIGHT_TEXT;
+    private static final Color HEALTH_COLOR = ThemeManager.Colors.DANGER;
+    private static final Color SCORE_COLOR = ThemeManager.Colors.WARNING;
+    private static final Color TIME_COLOR = ThemeManager.Colors.PRIMARY;
+    private static final Color LEVEL_COLOR = ThemeManager.Colors.SUCCESS;
+    private static final Color GAME_OVER_COLOR = ThemeManager.Colors.DANGER;
+    private static final Color LEVEL_COMPLETE_COLOR = ThemeManager.Colors.WARNING;
 
-    private static final Font HUD_FONT_SMALL = Font.font("Arial", 16);
-    private static final Font HUD_FONT_MEDIUM = Font.font("Arial", 20);
-    private static final Font HUD_FONT_LARGE = Font.font("Arial Bold", 32);
+    private static final Font HUD_FONT_SMALL = ThemeManager.Fonts.HUD_SMALL;
+    private static final Font HUD_FONT_MEDIUM = ThemeManager.Fonts.HUD_MEDIUM;
+    private static final Font HUD_FONT_LARGE = ThemeManager.Fonts.HUD_LARGE;
 
     // ========== 构造函数 ==========
     public StageGameScene(Stage stage) {
@@ -509,9 +509,7 @@ public class StageGameScene extends BaseGameScene {
             if (map != null) {
                 spritePainter.drawMapForeground(tankGc, map);
             }
-// 调用父类绘制道具和粒子
-            super.renderBaseElements();
-            // 5. 绘制道具和粒子特效 (调用父类方法)
+// 5. 绘制道具和粒子特效 (调用父类方法)
             super.renderBaseElements();
 
             if (player != null) {
@@ -1049,42 +1047,64 @@ public class StageGameScene extends BaseGameScene {
         if (gc == null) return;
 
         try {
-            // 绘制半透明背景板
-            gc.setFill(Color.rgb(0, 0, 0, 0.7));
-            gc.fillRoundRect(10, 10, 220, 100, 10, 10);
-            gc.fillRoundRect(WIDTH - 230, 10, 220, 100, 10, 10);
+            // 绘制左侧信息面板 - 关卡和分数
+            drawInfoPanel(gc, 10, 10, 240, 120, "关卡信息", () -> {
+                // 关卡信息
+                gc.setFill(ThemeManager.Colors.LEVEL_COLOR);
+                gc.fillText("关卡: " + currentLevel + "/3", 30, 45);
 
-            // 绘制边框
-            gc.setStroke(Color.web("#f39c12"));
-            gc.setLineWidth(2);
-            gc.strokeRoundRect(10, 10, 220, 100, 10, 10);
-            gc.strokeRoundRect(WIDTH - 230, 10, 220, 100, 10, 10);
+                // 分数信息
+                gc.setFill(ThemeManager.Colors.SCORE_COLOR);
+                gc.fillText("得分: " + playerScore, 30, 75);
 
-            // 左侧：关卡和分数
-            gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 20));
+                // 目标分数
+                gc.setFill(ThemeManager.Colors.WARNING);
+                gc.fillText("目标: " + targetScore, 30, 105);
+            });
 
-            gc.setFill(Color.web("#2ecc71"));
-            gc.fillText("第 " + currentLevel + " 关", 30, 40);
+            // 绘制右侧信息面板 - 时间和状态
+            drawInfoPanel(gc, WIDTH - 250, 10, 240, 120, "状态信息", () -> {
+                // 游戏时间
+                gc.setFill(ThemeManager.Colors.TIME_COLOR);
+                String timeText = String.format("时间: %02d:%02d",
+                        gameElapsedTime / 60, gameElapsedTime % 60);
+                gc.fillText(timeText, WIDTH - 230, 45);
 
-            gc.setFill(Color.web("#f1c40f"));
-            gc.fillText("分数: " + playerScore, 30, 70);
-            gc.fillText("目标: " + targetScore, 30, 100);
+                // 血量显示（心形图标）
+                drawHealthHearts(gc, WIDTH - 230, 75, playerHealth);
 
-            // 右侧：时间和敌人数量
-            gc.setFill(Color.web("#3498db"));
-            String timeText = String.format("时间: %02d:%02d",
-                    gameElapsedTime / 60, gameElapsedTime % 60);
-            gc.fillText(timeText, WIDTH - 210, 40);
-
-            // 血量显示（心形图标）
-            drawHealthHearts(gc, WIDTH - 210, 70, playerHealth);
-
-            gc.setFill(Color.WHITE);
-            gc.fillText("剩余敌人: " + enemyTanks.size(), WIDTH - 210, 100);
+                // 剩余敌人
+                gc.setFill(ThemeManager.Colors.ENEMY_NORMAL);
+                gc.fillText("敌人: " + enemyTanks.size(), WIDTH - 230, 105);
+            });
 
         } catch (Exception e) {
             System.err.println("❌ 绘制HUD异常: " + e.getMessage());
         }
+    }
+
+    /**
+     * 绘制信息面板
+     */
+    private void drawInfoPanel(GraphicsContext gc, double x, double y, double width, double height, 
+                              String title, Runnable contentRenderer) {
+        // 绘制半透明背景板
+        gc.setFill(Color.rgb(10, 14, 23, 0.85));
+        gc.fillRoundRect(x, y, width, height, 10, 10);
+
+        // 绘制边框
+        gc.setStroke(ThemeManager.Colors.PRIMARY);
+        gc.setLineWidth(2);
+        gc.strokeRoundRect(x, y, width, height, 10, 10);
+
+        // 绘制标题
+        gc.setFill(ThemeManager.Colors.PRIMARY);
+        gc.setFont(ThemeManager.Fonts.HUD_MEDIUM);
+        gc.fillText(title, x + 15, y + 25);
+
+        // 绘制内容
+        gc.setFont(ThemeManager.Fonts.HUD_SMALL);
+        contentRenderer.run();
     }
 
     /**
@@ -1163,18 +1183,18 @@ public class StageGameScene extends BaseGameScene {
         gc.save();
 
         // 半透明黑色遮罩 + 渐变
-        LinearGradient maskGrad = new LinearGradient(0, 0, 0, 1, true,
+        javafx.scene.paint.LinearGradient maskGrad = new javafx.scene.paint.LinearGradient(0, 0, 0, 1, true,
                 javafx.scene.paint.CycleMethod.NO_CYCLE,
-                new javafx.scene.paint.Stop(0, Color.rgb(0,0,0,0.8)),
-                new javafx.scene.paint.Stop(1, Color.rgb(20,20,40,0.9)));
+                new javafx.scene.paint.Stop(0, Color.rgb(10,14,23,0.9)),
+                new javafx.scene.paint.Stop(1, Color.rgb(26,32,44,0.95)));
         gc.setFill(maskGrad);
         gc.fillRect(0, 0, WIDTH, HEIGHT);
 
         // 标题文字
         String title = isGameOver && playerHealth <= 0 ? "MISSION FAILED" : "LEVEL COMPLETE";
-        Color titleColor = isGameOver ? Color.web("#e74c3c") : Color.web("#f39c12");
+        Color titleColor = isGameOver ? ThemeManager.Colors.DANGER : ThemeManager.Colors.WARNING;
 
-        gc.setFont(Font.font("Impact", FontWeight.BOLD, 80));
+        gc.setFont(ThemeManager.Fonts.GAME_OVER);
         gc.setEffect(new javafx.scene.effect.DropShadow(20, titleColor));
         gc.setFill(titleColor);
 
@@ -1183,23 +1203,23 @@ public class StageGameScene extends BaseGameScene {
         gc.setEffect(null);
 
         // 数据面板
-        gc.setFill(Color.rgb(0, 0, 0, 0.8));
-        gc.fillRoundRect(centerX - 250, centerY - 40, 500, 180, 10, 10);
-        gc.setStroke(Color.web("#f39c12"));
-        gc.setLineWidth(2);
-        gc.strokeRoundRect(centerX - 250, centerY - 40, 500, 180, 10, 10);
+        gc.setFill(Color.rgb(26, 32, 44, 0.9));
+        gc.fillRoundRect(centerX - 250, centerY - 40, 500, 180, 15, 15);
+        gc.setStroke(ThemeManager.Colors.SECONDARY);
+        gc.setLineWidth(3);
+        gc.strokeRoundRect(centerX - 250, centerY - 40, 500, 180, 15, 15);
 
         // 数据文字
-        gc.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 24));
-        gc.setFill(Color.WHITE);
+        gc.setFont(ThemeManager.Fonts.MENU_ITEM);
+        gc.setFill(ThemeManager.Colors.LIGHT_TEXT);
 
         gc.fillText("最终得分: " + playerScore, centerX - 220, centerY + 10);
         gc.fillText("总用时: " + gameElapsedTime + " 秒", centerX - 220, centerY + 50);
         gc.fillText("剩余生命: " + (playerHealth > 0 ? playerHealth : 0), centerX - 220, centerY + 90);
 
         // 按键提示
-        drawKeyHint(gc, "R", "重新开始", centerX - 180, HEIGHT - 80, Color.web("#2ecc71"));
-        drawKeyHint(gc, "ESC", "返回菜单", centerX + 60, HEIGHT - 80, Color.WHITE);
+        drawKeyHint(gc, "R", "重新开始", centerX - 180, HEIGHT - 80, ThemeManager.Colors.SUCCESS);
+        drawKeyHint(gc, "ESC", "返回菜单", centerX + 60, HEIGHT - 80, ThemeManager.Colors.LIGHT_TEXT);
 
         gc.restore();
     }
