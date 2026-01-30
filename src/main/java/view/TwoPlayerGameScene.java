@@ -53,6 +53,9 @@ public class TwoPlayerGameScene extends BaseGameScene {
 
     // ======== 新增：SettingsWindow 成员变量 ========
     private SettingsWindow settingsWindow;
+    
+    // ======== 新增：暂停菜单 ========
+    private ModernPauseMenu pauseMenu;
 
     private Tank player1;
     private Tank player2;
@@ -94,7 +97,10 @@ public class TwoPlayerGameScene extends BaseGameScene {
         super(primaryStage); // 此时mapTileView已通过构造代码块初始化，非null
         initScene();
         // 新增：首次进入双人模式时，播放背景音乐
-        settingsWindow = new SettingsWindow(primaryStage, this);        SoundManager.getInstance().playGameMusic();
+        settingsWindow = new SettingsWindow(primaryStage, this);
+        // 新增：初始化暂停菜单
+        pauseMenu = new ModernPauseMenu(this, primaryStage);
+        SoundManager.getInstance().playGameMusic();
         // 新增：初始化道具系统
         itemSpawner = new ItemSpawner();
         particleEffects = new ArrayList<>();
@@ -484,6 +490,11 @@ public class TwoPlayerGameScene extends BaseGameScene {
                 mainMenu.start(primaryStage);
             }
         }
+        
+        // 确保在游戏结束后暂停菜单也被移除
+        if (gameOver && pauseMenu != null && pauseMenu.isPaused()) {
+            pauseMenu.setPaused(false);
+        }
     }
 
     private void initMapModel() {
@@ -538,6 +549,13 @@ public class TwoPlayerGameScene extends BaseGameScene {
                 case RIGHT: if (player2.isAlive()) player2.setRotatingRight(true); break;
                 // P2 射击 (修改这里！)
                 case K: if (player2.isAlive()) p2Shooting = true; break;
+                
+                // 暂停游戏
+                case ESCAPE: 
+                    if (!gameOver) {
+                        pauseMenu.togglePause();
+                    }
+                    break;
             }
         });
 
